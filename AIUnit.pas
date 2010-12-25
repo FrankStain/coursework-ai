@@ -576,7 +576,8 @@ begin
   BaseValue := FMap.Cell[X, Y];
   if BaseValue = 0 then exit;
 
-  (*ActualX := X;
+  //(*
+  ActualX := X;
   ActualY := Y;
   inc(ActualX);
   while ActualY < FMap.Height do begin
