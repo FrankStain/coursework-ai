@@ -1,4 +1,5 @@
 theory/
+trunc/
 *.~*
 *.dcu
 *.dof
