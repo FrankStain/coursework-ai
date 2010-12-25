@@ -13,7 +13,7 @@ Type
       FWeight: integer;
       FMap: TMap;
       FParent: TMapTree;
-      FBranches: array[0..3] of TMapTree;
+      FBranches: array[0..3] of TMapTree;//копия квадро-дерево
 
       Constructor Create(oParent: TMapTree); overload;
 
@@ -154,7 +154,7 @@ Type
 implementation
 
 uses Types;
-
+{функция определяет все мнодество ходов}
 function fact(X: integer): integer;
 begin
   Result := X;
@@ -166,7 +166,7 @@ end;
 
 Constructor TMapTree.Create(oParent: TMapTree);
 begin
-  Inherited Create;
+  Inherited Create;//вызов родительского метода конструктора
   init;
   FParent := oParent;
   FParent.AddBranch(self);
@@ -182,7 +182,7 @@ end;
 
 Procedure TMapTree.init;
 begin
-  FillChar(FBranches, sizeof(FBranches), 0);
+  FillChar(FBranches, sizeof(FBranches), 0); //заполнение копий нулями
   FParent := nil;
   FMap := nil;
 end;
@@ -196,6 +196,7 @@ begin
   end;
   inherited;
 end;
+
 
 Procedure TMapTree.AddBranch(oValue: TMapTree);
 var
@@ -222,12 +223,16 @@ begin
   FBranches[3] := nil;
 end;
 
+{функция создания копии карты поля}
 Function TMapTree.MakeBranch: TMapTree;
 begin
   if FBranches[3] <> nil then Result := nil
   else Result := TMapTree.Create(self);
 end;
 
+
+{функция определения длины решения
+идем снизу вверх, цепляя порождающую вершину}
 Procedure TMapTree.MarkAsComplited;
 var
   oRoot: TMapTree;
@@ -244,6 +249,12 @@ begin
   end;
 end;
 
+
+{функция проверки на уникальность данной раскладки поля
+т.е. если такое поелу уже встретилось, то функция вернет true
+значит такое повторное поле обрабатывать не стоит
+FMap - поле в чек-таблице с переданным номером
+oMap - поле с возможно осуществимым ходом}
 Function TMapTree.IsMapsEqual(oMap: TMapTree): boolean;
 var
   x: integer;
@@ -282,6 +293,7 @@ begin
   Result := FBranches[index];
 end;
 
+{Функция возвращает глубину найденного решения}
 Function TMapTree.GetDepth: integer;
 var
   oRoot: TMapTree;
@@ -311,6 +323,8 @@ begin
   FList.Add(oMap);
 end;
 
+
+{функция очистки  элеменат из очереди}
 Function TMapList.Recv: TMapTree;
 begin
   Result := nil;
@@ -436,10 +450,12 @@ begin
   Result := FindWay;
 end;
 
+
+{реализация метода поиска в ширину}
 Function TWidewayAI.FindWay: boolean;
 var
-  oCurMap: TMapTree;
-  oNewMap: TMapTree;
+  oCurMap: TMapTree;//текущее рассматриваемое поле
+  oNewMap: TMapTree;//новое поле для совершения хода
   ptCenter: TPoint;
   ptRootCenter: TPoint;
   ptWalk: TPoint;
@@ -447,24 +463,34 @@ var
   iCheckListId: integer;
 begin
   Result := false;
+   {заходим в цикл поиска пока в очереди хоть что-то есть}
   while FPipe.Count > 0 do begin
-    oCurMap := FPipe.Recv;
-    ptCenter := oCurMap.Map.GetEmptyCell;
+    oCurMap := FPipe.Recv; //вытаскиваем поле из очереди, попутно его удаляя
+    ptCenter := oCurMap.Map.GetEmptyCell;//определение пустой клетки
+      {относительно пустой клетки можно сделать только 4 хода - max}
     for iStepId := 0 to 3 do begin
       with ptWalk do begin
         X := ptCenter.X + arMoveDirections[iStepId, 0];
         Y := ptCenter.Y + arMoveDirections[iStepId, 1];
       end;
+          //если такой ход сделать нельзя то идем на следующий шаг цикла
       if not oCurMap.Map.IsCellMovable(ptWalk.X, ptWalk.Y) then continue;
+      //делаем проверку не повторяет ли этот ход предыдущий:
+      //проверка делается пог местоположению пустой клетки
       if oCurMap.Root <> nil then begin
-        ptRootCenter := oCurMap.Root.Map.GetEmptyCell;
+        ptRootCenter := oCurMap.Root.Map.GetEmptyCell;//определяем координаты пустой клетки текущего поля
+        //если ход равен предыдущему, то на следующий шаг цикла
         if (ptRootCenter.X = ptWalk.X) and (ptRootCenter.Y = ptWalk.Y) then continue;
       end;
-
+       //создаем копию
       oNewMap := oCurMap.MakeBranch;
+      //если ранее решение уже было найдено, и его глуьина меньше, то на следующий ход идем
       if (FRoot.Weight > 0) and (FRoot.Weight < oNewMap.Depth) then continue;
+      //делаем ход в копии
       oNewMap.Map.MoveCell(ptWalk.X, ptWalk.Y);
+      //если нашли решение,то помечаем лист как выигрыш
       if oNewMap.Map.IsValid then begin
+       //расчитываем вес решения
         oNewMap.MarkAsComplited;
         Result := true;
       end else begin
@@ -474,8 +500,8 @@ begin
           if FCheckList.Item[iCheckListId].IsMapsEqual(oNewMap) then break;
         end;
         if iCheckListId = 0 then begin
-          FCheckList.Send(oNewMap);
-          FPipe.Send(oNewMap);
+          FCheckList.Send(oNewMap);//добавление поля в чек-таблицу, чтобы потом обработанное поле еще раз не добавлять в очередь
+          FPipe.Send(oNewMap);//добавляем поле в очередь
         end;
       end;
       ProcessEvent(FCheckList.Count, FComplexity);
@@ -489,6 +515,8 @@ begin
   FOnProcess(iStep, iMax);
 end;
 
+{функция построения выигрвшного маршрута
+в реалии у нас записаны коорлинаты пустых клеток каждого хода}
 Function TWidewayAI.GetRightPass(oWay: TWaypointList): boolean;
 var
   oNode: TMapTree;
@@ -501,23 +529,27 @@ begin
   oWay.Clear;
   if FRoot = nil then exit;
   oNode := FRoot;
+
   while not ((oNode = nil) or Result) do begin
     if oNode.Weight = 0 then break;
     iWayWeight := 0;
     iWayBranch := 0;
+     {определение хода с наименьшим весом, чтобы построить наилучший результат}
     for iBranchId := 0 to 3 do begin
       if oNode.Branch[iBranchId] = nil then continue;
       if (iWayWeight = 0) or (oNode.Branch[iBranchId].Weight < iWayWeight) then begin
         if oNode.Branch[iBranchId].Weight = 0 then continue;
         iWayWeight := oNode.Branch[iBranchId].Weight;
-        iWayBranch := iBranchId;
+        iWayBranch := iBranchId;//номер хода (нумерация с 0 до 3)
       end;
     end;
     if iWayWeight > 0 then begin
-      ptWaypoint := oNode.Branch[iWayBranch].Map.GetEmptyCell;
-      oWay.Add(ptWaypoint.X, ptWaypoint.Y);
-      oNode := oNode.Branch[iWayBranch];
-      Result := oNode.Weight = 1;
+      ptWaypoint := oNode.Branch[iWayBranch].Map.GetEmptyCell;//координаты пустой клетки выбранного шага
+      //по отношению к прошлым координатам пустой клетки и координатам текущей пустой клетки легко определеить координаты хода
+      
+      oWay.Add(ptWaypoint.X, ptWaypoint.Y);//добавление хода
+      oNode := oNode.Branch[iWayBranch];//делаем выбранный ход текущей вершиной для построение дальнейшего маршрута
+      Result := oNode.Weight = 1;//если вес вершины один, то конец оптимальнго пути
     end else oNode := nil;
   end;
 end;

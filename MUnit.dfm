@@ -1,6 +1,6 @@
 object MForm: TMForm
-  Left = 237
-  Top = 494
+  Left = 258
+  Top = 237
   BorderIcons = [biSystemMenu, biMinimize]
   BorderStyle = bsSingle
   Caption = #1055#1103#1090#1085#1072#1096#1082#1080
@@ -47,7 +47,7 @@ object MForm: TMForm
     Top = 0
     Width = 300
     Height = 300
-    ActivePage = TabSheet2
+    ActivePage = TabSheet1
     Align = alLeft
     TabOrder = 1
     object TabSheet1: TTabSheet
@@ -55,7 +55,7 @@ object MForm: TMForm
       object StaticText1: TStaticText
         Left = 0
         Top = 0
-        Width = 100
+        Width = 292
         Height = 17
         Align = alTop
         BevelKind = bkSoft
@@ -171,7 +171,7 @@ object MForm: TMForm
       object StaticText2: TStaticText
         Left = 0
         Top = 0
-        Width = 292
+        Width = 99
         Height = 17
         Align = alTop
         BevelKind = bkSoft
@@ -286,7 +286,7 @@ object MForm: TMForm
         object StaticText7: TStaticText
           Left = 1
           Top = 1
-          Width = 73
+          Width = 53
           Height = 17
           Align = alTop
           BevelKind = bkSoft
@@ -347,7 +347,7 @@ object MForm: TMForm
       object StaticText4: TStaticText
         Left = 0
         Top = 0
-        Width = 292
+        Width = 123
         Height = 17
         Align = alTop
         BevelKind = bkSoft
@@ -418,7 +418,7 @@ object MForm: TMForm
         object StaticText8: TStaticText
           Left = 1
           Top = 1
-          Width = 73
+          Width = 53
           Height = 17
           Align = alTop
           BevelKind = bkSoft
