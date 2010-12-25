@@ -98,7 +98,7 @@ implementation
  *)
 Constructor TMap.Create;
 begin
-  inherited;
+  inherited;//вызов родительского метода констуктора
   FSeed := nil;
   FPeers := nil;
   SetSize(3, 3);
@@ -132,7 +132,7 @@ begin
   ClearPeers;
   // Чистим память под поле
   Finalize(FMap);
-  // Удаляемся... в прямом смысле О__о
+  // Удаляемся... в прямом смысле
   inherited;
 end;
 

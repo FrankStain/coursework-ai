@@ -113,9 +113,13 @@ begin
   GameMap := Tmap.Create;
   PC_Game.ActivePageIndex := 0;
   P_Screen.Color := clGameBackground;
+
   oWideAI := TWidewayAI.Create;
   oWideWay := TWaypointList.Create;
   oWideAI.OnProcess := AI1Process;
+
+  {задаме для метода поиска по градиенту
+  основные списки}
   oGradientAI := TGradientAI.Create;
   oGradientWay := TWaypointList.Create;
   oGradientAI.OnProcess := AI3Process;
@@ -132,12 +136,13 @@ end;
 
 procedure TMForm.FormShow(Sender: TObject);
 begin
-  SE_MapX.Value := GameMap.Width;
-  SE_MapY.Value := GameMap.Height;
+  SE_MapX.Value := GameMap.Width;//ширина поля
+  SE_MapY.Value := GameMap.Height;//высота поля
   PB_Screen.Color := clGameBackground;
-  SetMapSizeButton.Click;
+  SetMapSizeButton.Click;//функция задания размера поля
 end;
 
+{процедура перерисовки изображения}
 procedure TMForm.PB_ScreenPaint(Sender: TObject);
 var
   x, y, cs, ms: integer;
@@ -146,10 +151,11 @@ var
 begin
   if GameMap.IsValid then P_Screen.Color := clGameActiveCell
   else P_Screen.Color := clGameBackground;
-  with TPaintBox(Sender).Canvas do begin
-    Font.Name := 'Arial';
-    Font.Style := [fsBold];
-    Pen.Color := clBlack;
+  with TPaintBox(Sender).Canvas do
+  begin
+    Font.Name := 'Arial';//задаем шрифт цифр
+    Font.Style := [fsBold];//толщину
+    Pen.Color := clBlack;//цвет
     ms := ClipRect.Right - ClipRect.Left;
     cs := ms div GameMap.Width;
     ms := (ms mod GameMap.Width) div 2;
@@ -159,13 +165,13 @@ begin
         dr := Bounds(ms + x * cs , ms + y * cs, cs, cs);
         if bMouseCellActive and ((MousePoint.X = x) and (MousePoint.Y = y)) then Brush.Color := clGameActiveCell
         else Brush.Color := clGameBackground;
-        Rectangle(dr);
-        if GameMap.Cell[x, y] <> 0 then begin
-          sDigit := IntToStr(GameMap.Cell[x, y]);
+        Rectangle(dr);//рисуем прямоуголник (клеточка-фишка)
+        if GameMap.Cell[x, y] <> 0 then begin//если не пустышка, то
+          sDigit := IntToStr(GameMap.Cell[x, y]);//получаем число фишки
           inc(dr.Left, (cs - TextWidth(sDigit)) div 2);
           inc(dr.Top, (cs - TextHeight(sDigit)) div 2);
           Brush.Style := bsClear;
-          TextOut(dr.Left, dr.Top, sDigit);
+          TextOut(dr.Left, dr.Top, sDigit);//пишем цифру в клеточке
           Brush.Style := bsSolid;
         end;
       end;
@@ -173,6 +179,7 @@ begin
   end;
 end;
 
+{процедура при перемещении мыши по полю}
 procedure TMForm.PB_ScreenMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
 var
   cs: integer;
@@ -189,14 +196,17 @@ begin
   end;
 end;
 
+{функция изменения размера поля}
 procedure TMForm.SetMapSizeButtonClick(Sender: TObject);
 begin
-  SE_MapY.Value := SE_MapX.Value;
-  GameMap.SetSize(SE_MapX.Value, SE_MapY.Value);
+  SE_MapY.Value := SE_MapX.Value;//размер поля строго квадратной формы
+  GameMap.SetSize(SE_MapX.Value, SE_MapY.Value);//задание размера карты
   FlushMapButton.Click;
-  PB_Screen.Repaint;
+  PB_Screen.Repaint;//перерисовка
 end;
 
+{процедура сбрасывания поля
+упорядочивает фишки в верном порядке}
 procedure TMForm.FlushMapButtonClick(Sender: TObject);
 var
   x, y: integer;
@@ -209,9 +219,11 @@ begin
     end;
     Cell[Width - 1, Height - 1] := 0;
   end;
+  //перерисовываем поле
   PB_Screen.Repaint;
 end;
 
+{обработчик нажатия на кнопку "Перемещать фишки"}
 procedure TMForm.ShakeMapButtonClick(Sender: TObject);
 var
   iStep, iRndCell: integer;
@@ -219,14 +231,18 @@ var
 begin
   iStep := 0;
   while iStep < 4 * (GameMap.Width + 1) do begin
-    ptEmptyCell := GameMap.GetEmptyCell;
-    iRndCell := random(64) mod 4;
+    ptEmptyCell := GameMap.GetEmptyCell;//определяем коорилднаты пустой фишки
+    iRndCell := random(64) mod 4;//генерируем случанойе число
     inc(ptEmptyCell.X, arMoveDirections[iRndCell, 0]);
     inc(ptEmptyCell.Y, arMoveDirections[iRndCell, 1]);
     if ptEmptyCell.X < 0 then ptEmptyCell.X := 0 - ptEmptyCell.X;
     if ptEmptyCell.Y < 0 then ptEmptyCell.Y := 0 - ptEmptyCell.Y;
-    if not GameMap.MoveCell(ptEmptyCell.X, ptEmptyCell.Y) then continue;
-    if GameMap.IsValid then dec(iStep) else inc(iStep);
+    if not GameMap.MoveCell(ptEmptyCell.X, ptEmptyCell.Y) then continue;//если нельзя
+    //переместить фищку по данным координатам, то идем дальше
+
+    //если построился выигрыш, то нужно еще мешать фишки
+    if GameMap.IsValid then dec(iStep)
+                       else inc(iStep);
   end;
 
   PB_Screen.Repaint;
