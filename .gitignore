@@ -1,0 +1,5 @@
+theory/
+*.~*
+*.dcu
+*.dof
+*.dcp
