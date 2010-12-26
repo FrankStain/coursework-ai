@@ -104,19 +104,20 @@ uses Math;
 
 const
   clGameBackground: TColor = $00B88B7B;
-  clGameActiveCell: TColor = clSkyBlue;
+  clGameActiveCell: TColor = clSkyBlue;//цвет когда ячейка активна
 
 procedure TMForm.FormCreate(Sender: TObject);
 begin
   randomize;
-  DoubleBuffered := true;
-  GameMap := Tmap.Create;
+  DoubleBuffered := true;//разрешаем двойной буффер, изображение вначале рисуется во временный буфер
+  //а затем махом вырисовывается
+  GameMap := Tmap.Create;//создание карты
   PC_Game.ActivePageIndex := 0;
-  P_Screen.Color := clGameBackground;
+  P_Screen.Color := clGameBackground;//устанавливаем основной цвет
 
   oWideAI := TWidewayAI.Create;
   oWideWay := TWaypointList.Create;
-  oWideAI.OnProcess := AI1Process;
+  oWideAI.OnProcess := AI1Process;//создаем процесс поиска в ширину
 
   {задаме для метода поиска по градиенту
   основные списки}
@@ -156,20 +157,28 @@ begin
     Font.Name := 'Arial';//задаем шрифт цифр
     Font.Style := [fsBold];//толщину
     Pen.Color := clBlack;//цвет
-    ms := ClipRect.Right - ClipRect.Left;
-    cs := ms div GameMap.Width;
-    ms := (ms mod GameMap.Width) div 2;
-    Font.Size := (cs div 2) - 1;
+    ms := ClipRect.Right - ClipRect.Left;//определяем область рисования
+    //ClipRect  - прямоуголная область для рисования
+    //ширину прямоуголника
+
+    cs := ms div GameMap.Width;//ширину области рисования делим на карту поля игры, определяем размер клеточки
+    ms := (ms mod GameMap.Width) div 2;//определяется начало поля относительно начала канвы
+    Font.Size := (cs div 2) - 1;//высота шрифта
     for y := 0 to GameMap.Height -1 do begin
       for x := 0 to GameMap.Width - 1 do begin
-        dr := Bounds(ms + x * cs , ms + y * cs, cs, cs);
+        dr := Bounds(ms + x * cs , ms + y * cs, cs, cs);//Bounds определяет рамку
+        //координаты:
+        //ось X и ось Y
+        //ширина и высота
+
+        //если ячейка активна(выделена мышью) то помечаем другим цветом
         if bMouseCellActive and ((MousePoint.X = x) and (MousePoint.Y = y)) then Brush.Color := clGameActiveCell
         else Brush.Color := clGameBackground;
         Rectangle(dr);//рисуем прямоуголник (клеточка-фишка)
         if GameMap.Cell[x, y] <> 0 then begin//если не пустышка, то
           sDigit := IntToStr(GameMap.Cell[x, y]);//получаем число фишки
-          inc(dr.Left, (cs - TextWidth(sDigit)) div 2);
-          inc(dr.Top, (cs - TextHeight(sDigit)) div 2);
+          inc(dr.Left, (cs - TextWidth(sDigit)) div 2);//определяем коориданту для рисования цифры
+          inc(dr.Top, (cs - TextHeight(sDigit)) div 2);//определяем коорлинату для рисования цифры
           Brush.Style := bsClear;
           TextOut(dr.Left, dr.Top, sDigit);//пишем цифру в клеточке
           Brush.Style := bsSolid;
@@ -179,7 +188,7 @@ begin
   end;
 end;
 
-{процедура при перемещении мыши по полю}
+{процедура при перемещении мыши по полю }
 procedure TMForm.PB_ScreenMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
 var
   cs: integer;
@@ -187,11 +196,12 @@ var
 begin
   with TPaintBox(Sender).Canvas do begin
     cs := (ClipRect.Right - ClipRect.Left) div GameMap.Width;
-    dm := Point(X div cs, Y div cs);
-    if (dm.X <> MousePoint.X) or (dm.Y <> MousePoint.Y) then begin
-      bMouseCellActive := GameMap.IsCellMovable(dm.X, dm.Y);
-      MousePoint := dm;
-      PB_Screen.Repaint;
+    dm := Point(X div cs, Y div cs);//определяем коорлинаты где находится мышь
+    if (dm.X <> MousePoint.X) or (dm.Y <> MousePoint.Y) then
+    begin
+      bMouseCellActive := GameMap.IsCellMovable(dm.X, dm.Y);//проверяем можно ли передвинуть фишку по данным координатам
+      MousePoint := dm;//
+      PB_Screen.Repaint;//пререрисовка
     end;
   end;
 end;
@@ -248,16 +258,19 @@ begin
   PB_Screen.Repaint;
 end;
 
+{процедура при отпускании кнопки мыши}
 procedure TMForm.PB_ScreenMouseUp(Sender: TObject; Button: TMouseButton;
   Shift: TShiftState; X, Y: Integer);
 begin
-  if not (bMouseCellActive and (PC_Game.ActivePageIndex = 0)) then exit;
-  GameMap.MoveCell(MousePoint.X, MousePoint.Y);
-  MousePoint := Point(0, 0);
+  if not (bMouseCellActive and (PC_Game.ActivePageIndex = 0)) then exit;//если отпускаем мышь не на поле игры, то выходим
+  GameMap.MoveCell(MousePoint.X, MousePoint.Y);//перемещение фишки по заданным координатам, которые при в
+  //возникновении процедуры были переданы
+  MousePoint := Point(0, 0);//обнуляем коорлинаты
   PB_ScreenMouseMove(Sender, Shift, X, Y);
-  PB_Screen.Repaint;
+  PB_Screen.Repaint;//перерисовка
 end;
 
+{процедура поиска решения методом поиска в ширину}
 procedure TMForm.B_AI1StartClick(Sender: TObject);
 var
   iWaypointId: integer;
@@ -265,13 +278,17 @@ var
 begin
   B_AI1ClearList.Click;
   P_Process.Visible := true;
-  oWideAI.Process(GameMap);
-  if oWideAI.GetRightPass(oWideWay) then begin
+  oWideAI.Process(GameMap);//запускаем процесс поискав ширину
+  //запускаем процедуру поиска маршрута решения
+  if oWideAI.GetRightPass(oWideWay) then
+  begin
     if oBasicMap <> nil then oBasicMap.Free;
     oBasicMap := GameMap.Peer;
     LB_AI1WayList.Clear;
     iWaypointId := 0;
-    while iWaypointId < oWideWay.Count do begin
+    //выстраиваем списко ходов для получения выигрыша
+    while iWaypointId < oWideWay.Count do
+    begin
       oPoint := oWideWay.Point[iWaypointId];
       LB_AI1WayList.Items.AddObject(format('Ход [%d, %d]', [oPoint.X + 1, oPoint.Y + 1]), oPoint);
       inc(iWaypointId);
@@ -280,65 +297,77 @@ begin
   //P_Process.Visible := false;
 end;
 
+{процедура возникает при нажатии на кнопку "Очистить"}
 procedure TMForm.B_AI1ClearListClick(Sender: TObject);
 begin
+//чистим списки поиска в ширину
   LB_AI1WayList.Clear;
   oWideWay.Clear;
   oWideAI.Clear;
   if oBasicMap <> nil then GameMap.Assign(oBasicMap);
-  GameMap.ClearPeers;
+  GameMap.ClearPeers;//очищаем копии
   oBasicMap := nil;
-  PB_Screen.Repaint;
+  PB_Screen.Repaint;//перерисовка
 end;
 
+{процедура сброски - возвращает в исходную начальную разыгрываемую ситуацию}
 procedure TMForm.B_AI1ResetClick(Sender: TObject);
 begin
   LB_AI1WayList.Tag := -1;
   LB_AI1WayList.ItemIndex :=  -1;
-  if oBasicMap <> nil then GameMap.Assign(oBasicMap);
-  PB_Screen.Repaint;
+  if oBasicMap <> nil then GameMap.Assign(oBasicMap);//копируем исходную карту
+  PB_Screen.Repaint;//перерисовываем
 end;
 
+{процедура нажатия на кнопку "Шаг"}
 procedure TMForm.B_AI1StepClick(Sender: TObject);
 var
   oPoint: TWaypoint;
 begin
-  if GameMap.IsValid or (1 > LB_AI1WayList.Count) then exit;
-  if LB_AI1WayList.Tag <> LB_AI1WayList.ItemIndex then B_AI1Reset.Click;
-  LB_AI1WayList.ItemIndex := LB_AI1WayList.ItemIndex + 1;
-  oPoint := TWaypoint(LB_AI1WayList.Items.Objects[LB_AI1WayList.ItemIndex]);
-  GameMap.MoveCell(oPoint.X, oPoint.Y);
-  PB_Screen.Repaint;
+  if GameMap.IsValid or (1 > LB_AI1WayList.Count) then exit;//если сразу было решение при начальной раскладке, то выходим
+  if LB_AI1WayList.Tag <> LB_AI1WayList.ItemIndex then B_AI1Reset.Click;//если мы щелкнули на каком-то шаге мышью, а он не
+  //совпадает с реальным шагом, то сбрасываем Tag
+  
+  LB_AI1WayList.ItemIndex := LB_AI1WayList.ItemIndex + 1;//берем следующий шаг
+  oPoint := TWaypoint(LB_AI1WayList.Items.Objects[LB_AI1WayList.ItemIndex]);//определяем шаг
+  GameMap.MoveCell(oPoint.X, oPoint.Y);//выполняем перемещение фишки по заданным коорлинатам
+  PB_Screen.Repaint;//перерисовываем карту игры
   LB_AI1WayList.Tag := LB_AI1WayList.ItemIndex;
 end;
 
+{процесс срабатывает при поиске в ширину}
 Procedure TMForm.AI1Process(iStep: integer; iMax: integer);
 begin
-  L_AI1SCount.Caption := IntToStr(iStep);
-  L_AI1STotal.Caption := IntToStr(iMax);
+  L_AI1SCount.Caption := IntToStr(iStep);//выводи сообщение какой шаг
+  L_AI1STotal.Caption := IntToStr(iMax);//все множество решений игры
   Application.ProcessMessages;
 end;
 
+{процесс запуска при поиска по градиенту}
 Procedure TMForm.AI3Process(iStep: integer; iMax: integer);
 begin
-  L_AI3SCount.Caption := IntToStr(iStep);
-  L_AI3STotal.Caption := IntToStr(iMax);
+  L_AI3SCount.Caption := IntToStr(iStep);//какой шаг по счету
+  L_AI3STotal.Caption := IntToStr(iMax);//все множество ходов
   Application.ProcessMessages;
 end;
 
+
+{Процедура нажатиня на кнопку "Искать" в методе по градиенту}
 procedure TMForm.B_AI3StartClick(Sender: TObject);
 var
   iWaypointId: integer;
   oPoint: TWaypoint;
 begin
-  B_AI3ClearList.Click;
+  B_AI3ClearList.Click;//очищаем список
   P_Process3.Visible := true;
-  oGradientAI.Process(GameMap);
+  oGradientAI.Process(GameMap);//запуск процесса поиска по градиенту
+  //выстравиваем маршрут решенеия, если он есть
   if oGradientAI.GetRightPass(oGradientWay) then begin
     if oBasicMap <> nil then oBasicMap.Free;
     oBasicMap := GameMap.Peer;
     LB_AI3WayList.Clear;
     iWaypointId := 0;
+     //выстраиваем списко ходов для получения выигрыша, выводи их на форму
     while iWaypointId < oGradientWay.Count do begin
       oPoint := oGradientWay.Point[iWaypointId];
       LB_AI3WayList.Items.AddObject(format('Ход [%d, %d]', [oPoint.X + 1, oPoint.Y + 1]), oPoint);
@@ -348,36 +377,41 @@ begin
   //P_Process3.Visible := false;
 end;
 
+{процедура сброски - возвращает в исходную начальную разыгрываемую ситуацию}
 procedure TMForm.B_AI3ResetClick(Sender: TObject);
 begin
   LB_AI3WayList.Tag := -1;
   LB_AI3WayList.ItemIndex :=  -1;
-  if oBasicMap <> nil then GameMap.Assign(oBasicMap);
-  PB_Screen.Repaint;
+  if oBasicMap <> nil then GameMap.Assign(oBasicMap);//копируем карту
+  PB_Screen.Repaint;//перерисовываем
 end;
 
+
+{Процедура нажатия на кнопку "Шаг" }
 procedure TMForm.B_AI3StepClick(Sender: TObject);
 var
   oPoint: TWaypoint;
 begin
   if GameMap.IsValid or (1 > LB_AI1WayList.Count) then exit;
   if LB_AI3WayList.Tag <> LB_AI3WayList.ItemIndex then B_AI3Reset.Click;
-  LB_AI3WayList.ItemIndex := LB_AI3WayList.ItemIndex + 1;
-  oPoint := TWaypoint(LB_AI3WayList.Items.Objects[LB_AI3WayList.ItemIndex]);
-  GameMap.MoveCell(oPoint.X, oPoint.Y);
-  PB_Screen.Repaint;
+  LB_AI3WayList.ItemIndex := LB_AI3WayList.ItemIndex + 1;//переходи на следующий шаг
+  oPoint := TWaypoint(LB_AI3WayList.Items.Objects[LB_AI3WayList.ItemIndex]);//берем координаты хода
+  GameMap.MoveCell(oPoint.X, oPoint.Y);//перемещение фишки по заданным координатам
+  PB_Screen.Repaint;//перерисовываем
   LB_AI3WayList.Tag := LB_AI3WayList.ItemIndex;
 end;
 
+{Процедура при нажатии на кнопку "Очистить"}
 procedure TMForm.B_AI3ClearListClick(Sender: TObject);
 begin
+//очищаем списки решений при поиске по градиенту
   LB_AI3WayList.Clear;
   oWideWay.Clear;
   oWideAI.Clear;
   if oBasicMap <> nil then GameMap.Assign(oBasicMap);
   GameMap.ClearPeers;
   oBasicMap := nil;
-  PB_Screen.Repaint;
+  PB_Screen.Repaint;//перерисовываем
 end;
 
 end.

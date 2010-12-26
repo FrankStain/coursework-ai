@@ -154,7 +154,7 @@ Type
 implementation
 
 uses Types;
-{функция определяет все мнодество ходов}
+{функция определяет все мнодество ходов - факториал}
 function fact(X: integer): integer;
 begin
   Result := X;
@@ -182,6 +182,7 @@ end;
 
 Procedure TMapTree.init;
 begin
+  //FBrunches содержит указатели на 4 отростка от дерева
   FillChar(FBranches, sizeof(FBranches), 0); //заполнение копий нулями
   FParent := nil;
   FMap := nil;
@@ -232,17 +233,19 @@ end;
 
 
 {функция определения длины решения
-идем снизу вверх, цепляя порождающую вершину}
+идем снизу вверх, цепляя порождающую вершину
+при заходе в цикл мы уже как бы имеем один шаг для корня}
 Procedure TMapTree.MarkAsComplited;
 var
   oRoot: TMapTree;
   iWeight: integer;
 begin
-  FWeight := 1;
+  FWeight := 1;//вес врешины
   oRoot := FParent;
-  iWeight := 2;
+  iWeight := 2;//
   while oRoot <> nil do begin
-    if (oRoot.FWeight > 0) and (oRoot.FWeight < iWeight) then break;
+    if (oRoot.FWeight > 0) and (oRoot.FWeight < iWeight) then break;//если вершина уже имеет вес и он
+    //меньше , чем тот что мы задаем то выходим отсюда
     oRoot.FWeight := iWeight;
     inc(iWeight);
     oRoot := oRoot.Root;
@@ -293,7 +296,7 @@ begin
   Result := FBranches[index];
 end;
 
-{Функция возвращает глубину найденного решения}
+{Функция возвращает глубину текущей вершины относительно корня всего деревa}
 Function TMapTree.GetDepth: integer;
 var
   oRoot: TMapTree;
@@ -446,7 +449,7 @@ begin
   FCheckList := TMapList.Create;
   FPipe.Send(FRoot);
   FCheckList.Send(FRoot);
-  FComplexity := fact(oInitialMap.Width * oInitialMap.Height);
+  FComplexity := fact(oInitialMap.Width * oInitialMap.Height);//определяем все множество ходов
   Result := FindWay;
 end;
 
@@ -511,7 +514,7 @@ end;
 
 Procedure TWidewayAI.ProcessEvent(iStep: integer; iMax: integer);
 begin
-  if not assigned(FOnProcess) then exit;
+  if not assigned(FOnProcess) then exit;//если в классе не задано событие отклика, то и вызывать его не надо
   FOnProcess(iStep, iMax);
 end;
 
@@ -566,6 +569,9 @@ begin
   FCheckList := nil;
 end;
 
+
+{функция возврата веса для фишки в определнной ячейке
+здесь считается для каждой фишки сколько элементов далее в поле меньшее ее}
 Function TMapEuristicTree.GetPointCompliteness(X, Y: integer): integer;
 var
   ActualX: integer;
@@ -576,8 +582,7 @@ begin
   BaseValue := FMap.Cell[X, Y];
   if BaseValue = 0 then exit;
 
-  //(*
-  ActualX := X;
+  (*ActualX := X;
   ActualY := Y;
   inc(ActualX);
   while ActualY < FMap.Height do begin
@@ -621,12 +626,15 @@ begin
   end;//*)
 end;
 
+
+{расчет N - формула тупика
+поле FComplitenes - хранит вес хода}
 Procedure TMapEuristicTree.FixCompletenessLevel;
 var
   ActualX: integer;
   ActualY: integer;
 begin
-  FCompleteness := 0; //FMap.GetEmptyCell.Y + 1;
+  FCompleteness := FMap.GetEmptyCell.Y + 1;
   ActualY := 0;
   while ActualY < FMap.Height do begin
     ActualX := 0;
@@ -639,12 +647,15 @@ begin
   //FCompleteness := FCompleteness + Depth;
 end;
 
+
+{функция создания элементов дерева для поиска}
 Function TMapEuristicTree.MakeBranch: TMapTree;
 begin
   if FBranches[3] <> nil then Result := nil
   else Result := TMapEuristicTree.Create(self);
 end;
 
+{процедура создания элемента в очереди}
 Procedure TMapEuristicList.Send(oMap: TMapTree);
 begin
   if not (oMap is TMapEuristicTree) then exit;
@@ -652,6 +663,8 @@ begin
   if not PlaceItem(TMapEuristicTree(oMap), 0, FList.Count - 1) then inherited Send(oMap);
 end;
 
+
+{размещение элемента в очереди}
 Function TMapEuristicList.PlaceItem(oNode: TMapEuristicTree; iLeftMargin, iRightMargin: integer): boolean;
 var
   oLeftNode: TMapEuristicTree;
@@ -661,34 +674,48 @@ var
 begin
   Result := false;
   if iRightMargin < iLeftMargin then exit;
-  oLeftNode  := TMapEuristicTree(FList.Items[iLeftMargin]);
-  if iRightMargin = iLeftMargin then begin
-    if oNode.Completeness > oLeftNode.Completeness then inc(iLeftMargin);
+  oLeftNode  := TMapEuristicTree(FList.Items[iLeftMargin]);//левый элемент из диапазона
+   //если у нас только один элемент
+   //oNode.Completeness - то что надо вставить в список
+   if iRightMargin = iLeftMargin then
+   begin
+    if oNode.Completeness > oLeftNode.Completeness then inc(iLeftMargin);//если вес нового поля больше чем то что там лежит
+    //то новое поле вставим справа от имеющегося
     FList.Insert(iLeftMargin, oNode);
-    Result := true;
-    exit;
-  end;
-  if oNode.Completeness <= oLeftNode.Completeness then begin
-    FList.Insert(iLeftMargin, oNode);
-    Result := true;
-    exit;
-  end;
-  oRightNode := TMapEuristicTree(FList.Items[iRightMargin]);
-  if oNode.Completeness >= oRightNode.Completeness then begin
-    FList.Insert(iRightMargin + 1, oNode);
     Result := true;
     exit;
   end;
 
-  iMidMargin := (iRightMargin - iLeftMargin) div 2;
+  //если вес нового поля<= весу левого элемента диапазона, то располагаем новое поле левее
+  if oNode.Completeness <= oLeftNode.Completeness then
+  begin
+    FList.Insert(iLeftMargin, oNode);
+    Result := true;
+    exit;
+  end;
+
+  oRightNode := TMapEuristicTree(FList.Items[iRightMargin]);//правый элемент из диапазона
+  //если новое поле >= правого элемента диапазона
+  if oNode.Completeness >= oRightNode.Completeness then
+  begin
+    FList.Insert(iRightMargin + 1, oNode);//новое поле добавляем правее последнего элемента
+    Result := true;
+    exit;
+  end;
+  
+  //если новое поле весит больше левой границы и меньше правой, то нужно его вставить между
+  iMidMargin := (iRightMargin - iLeftMargin) div 2;//делим отрезок на два
   if iMidMargin = 0 then iMidMargin := 1;
   inc(iMidMargin, iLeftMargin);
-  oMidNode := TMapEuristicTree(FList.Items[iLeftMargin]);
-  if oNode.Completeness > oMidNode.Completeness then
+  oMidNode := TMapEuristicTree(FList.Items[iLeftMargin]);//выбираем элемент с номером iMidMargin
+  if oNode.Completeness > oMidNode.Completeness then//если вес того, что хотим вставить >  вес элемента с номером
+     //iMidMargin вызываем метод с координатами : серединной и правой
     Result := PlaceItem(oNode, iMidMargin, iRightMargin)
   else
+  //вызываем метод с координатами: левой границы и серединной
     Result := PlaceItem(oNode, iLeftMargin, iMidMargin);
 end;
+
 
 Function TGradientAI.Process(oInitialMap: TMap): boolean;
 begin
