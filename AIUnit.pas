@@ -576,7 +576,7 @@ begin
   BaseValue := FMap.Cell[X, Y];
   if BaseValue = 0 then exit;
 
-  (*
+  //(*
   ActualX := X;
   ActualY := Y;
   inc(ActualX);
@@ -626,7 +626,7 @@ var
   ActualX: integer;
   ActualY: integer;
 begin
-  FCompleteness := FMap.GetEmptyCell.Y + 1;
+  FCompleteness := 0; //FMap.GetEmptyCell.Y + 1;
   ActualY := 0;
   while ActualY < FMap.Height do begin
     ActualX := 0;
