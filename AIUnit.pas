@@ -576,7 +576,7 @@ begin
   BaseValue := FMap.Cell[X, Y];
   if BaseValue = 0 then exit;
 
-  //(*
+  (*
   ActualX := X;
   ActualY := Y;
   inc(ActualX);
