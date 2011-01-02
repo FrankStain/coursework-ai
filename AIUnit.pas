@@ -110,7 +110,7 @@ Type
       FComplexity: integer;
 
     Protected
-      Function FindWay: boolean;
+      Function FindWay: boolean; virtual;
       Procedure ProcessEvent(iStep: integer; iMax: integer);
 
     Public
@@ -149,6 +149,17 @@ Type
   TGradientAI = class(TWidewayAI)
     Public
       Function Process(oInitialMap: TMap): boolean; override;
+  end;
+
+  TDeepwayAI = class(TWidewayAI)
+    Protected
+      FMaxDeepLevel: integer;
+
+      Function FindWay: boolean; override;
+    
+    Public
+      Function Process(oInitialMap: TMap): boolean; override;
+      
   end;
 
 implementation
@@ -569,7 +580,6 @@ begin
   FCheckList := nil;
 end;
 
-
 {функция возврата веса для фишки в определнной ячейке
 здесь считается для каждой фишки сколько элементов далее в поле меньшее ее}
 Function TMapEuristicTree.GetPointCompliteness(X, Y: integer): integer;
@@ -582,7 +592,6 @@ begin
   BaseValue := FMap.Cell[X, Y];
   if BaseValue = 0 then exit;
 
-  //(*
   ActualX := X;
   ActualY := Y;
   inc(ActualX);
@@ -594,37 +603,6 @@ begin
     ActualX := 0;
     inc(ActualY);
   end;
-  (*)
-  ActualX := X + 1;
-  ActualY := Y;
-  while ActualX < FMap.Width do begin
-    if (FMap.Cell[ActualX, ActualY] <> 0) and (FMap.Cell[ActualX, ActualY] < BaseValue) then inc(Result);
-    inc(ActualX);
-  end;
-  ActualX := X;
-  ActualY := Y + 1;
-  while ActualY < FMap.Height do begin
-    if (FMap.Cell[ActualX, ActualY] <> 0) and (FMap.Cell[ActualX, ActualY] < BaseValue) then inc(Result);
-    inc(ActualY);
-  end;
-  //*)
-  (*)
-  BaseValue := FMap.Cell[X, Y];
-  ActualX := BaseValue mod FMap.Width - 1;
-  ActualY := BaseValue div FMap.Width;
-  Result := abs(X - ActualX) + abs(Y - ActualY);
-  //*)
-  (*ActualX := X;
-  ActualY := Y;
-  inc(ActualY);
-  while ActualX < FMap.Width do begin
-    while ActualY < FMap.Height do begin
-      if (FMap.Cell[ActualX, ActualY] <> 0) and (FMap.Cell[ActualX, ActualY] < BaseValue) then inc(Result);
-      inc(ActualY);
-    end;
-    ActualY := 0;
-    inc(ActualX);
-  end;//*)
 end;
 
 
@@ -648,86 +626,164 @@ begin
   //FCompleteness := FCompleteness + Depth;
 end;
 
-
-{функция создания элементов дерева для поиска}
+(**
+ * Создает отросток элемента.
+ * Всего таких отростков может быть только 4.
+ *
+ * Возвращаемое значение:
+ *   Возвращает объект Элемента дерева, являющийся отростком и полной копией самого элемента.
+ *   Если у элемента уже есть 4 отростка, метод вернет nil.
+ *)
 Function TMapEuristicTree.MakeBranch: TMapTree;
 begin
   if FBranches[3] <> nil then Result := nil
   else Result := TMapEuristicTree.Create(self);
 end;
 
-{процедура создания элемента в очереди}
+(**
+ * Метод добавления элемента в список.
+ * Реализует добавление элемента в упорядоченный список
+ *
+ * Параметры:
+ *   oMap - Элемент, который необходимо разместить в очереди
+ *
+ *)
 Procedure TMapEuristicList.Send(oMap: TMapTree);
 begin
+  // Если класс добавляемого объекта не унаследован от TMapEuristicTree, то метод прийдется завершить.
   if not (oMap is TMapEuristicTree) then exit;
+  // Сперва нужно пересчитать вес элемента
   TMapEuristicTree(oMap).FixCompletenessLevel;
+  // А затем - попробовать разместить его в списке
   if not PlaceItem(TMapEuristicTree(oMap), 0, FList.Count - 1) then inherited Send(oMap);
 end;
 
-
-{размещение элемента в очереди}
+(**
+ * Метод размещения элемента в очереди с сортировкой.
+ *   Сортировка элементов производится прямо при добавлении.
+ *   Для поиска подходящей позиции элемента используется метод половинного делеиня
+ *
+ * Параметры:
+ *   oNode        - элемент, который необходимо добавить в само рассматриваемое множество
+ *   iLeftMargin  - индекс крайнего левого элемента из рассматриваемого диапазона
+ *   iRightMargin - индекс крайнего правого элемента из рассматриваемого диапазона
+ *
+ * Возвращаемое значение:
+ *   Возвращает true только тогда, когда элемент oNode удачно размещен в списке
+ *)
 Function TMapEuristicList.PlaceItem(oNode: TMapEuristicTree; iLeftMargin, iRightMargin: integer): boolean;
 var
-  oLeftNode: TMapEuristicTree;
-  oRightNode: TMapEuristicTree;
-  oMidNode: TMapEuristicTree;
-  iMidMargin: integer;
+  oLeftNode: TMapEuristicTree;   // Крайний левый элемент диапазона
+  oRightNode: TMapEuristicTree;  // Крайний правый элемент диапазона
+  oMidNode: TMapEuristicTree;    // "Медианный", средний элемент из диапазона
+  iMidMargin: integer;           // "Медиана диапазона", индекс среднего элемента диапазона
 begin
+  // Инициализация отрицательного результата, чтоб потом просто exit вызывать
   Result := false;
+
+  // Если указаны неправильные границы диапазона, то выходим с плохим результатом
   if iRightMargin < iLeftMargin then exit;
-  oLeftNode  := TMapEuristicTree(FList.Items[iLeftMargin]);//левый элемент из диапазона
-   //если у нас только один элемент
-   //oNode.Completeness - то что надо вставить в список
-   if iRightMargin = iLeftMargin then
-   begin
-    if oNode.Completeness > oLeftNode.Completeness then inc(iLeftMargin);//если вес нового поля больше чем то что там лежит
-    //то новое поле вставим справа от имеющегося
+
+  // Определяем крайний левый элемент диапазона
+  oLeftNode  := TMapEuristicTree(FList.Items[iLeftMargin]);
+  // Если диапазон состоит только из одного элемента, то рассматриваем просто частную ситуацию
+  if iRightMargin = iLeftMargin then begin
+    // Если новый элемент весит больше имеющегося, то увеличиваем индекс вставки
+    if oNode.Completeness > oLeftNode.Completeness then inc(iLeftMargin);
+    // Вставляем элемент в список
+    FList.Insert(iLeftMargin, oNode);
+
+    Result := true;
+    exit;
+  end;
+
+  // если вес нового элмента меньше или равен весу левого элемента диапазона, то его поле левее
+  if oNode.Completeness <= oLeftNode.Completeness then begin
     FList.Insert(iLeftMargin, oNode);
     Result := true;
     exit;
   end;
 
-  //если вес нового поля<= весу левого элемента диапазона, то располагаем новое поле левее
-  if oNode.Completeness <= oLeftNode.Completeness then
-  begin
-    FList.Insert(iLeftMargin, oNode);
-    Result := true;
-    exit;
-  end;
-
+  // Определяем крайний правый элемент диапазона
   oRightNode := TMapEuristicTree(FList.Items[iRightMargin]);//правый элемент из диапазона
-  //если новое поле >= правого элемента диапазона
-  if oNode.Completeness >= oRightNode.Completeness then
-  begin
+  // если новое поле >= правого элемента диапазона
+  if oNode.Completeness >= oRightNode.Completeness then begin
     FList.Insert(iRightMargin + 1, oNode);//новое поле добавляем правее последнего элемента
     Result := true;
     exit;
   end;
   
-  //если новое поле весит больше левой границы и меньше правой, то нужно его вставить между
+  // если новое поле весит больше левой границы и меньше правой, то нужно его вставить между
   iMidMargin := (iRightMargin - iLeftMargin) div 2;//делим отрезок на два
   if iMidMargin = 0 then iMidMargin := 1;
   inc(iMidMargin, iLeftMargin);
+
   oMidNode := TMapEuristicTree(FList.Items[iLeftMargin]);//выбираем элемент с номером iMidMargin
-  if oNode.Completeness > oMidNode.Completeness then//если вес того, что хотим вставить >  вес элемента с номером
-     //iMidMargin вызываем метод с координатами : серединной и правой
+  // если вес того, что хотим вставить >  вес элемента с номером
+  if oNode.Completeness > oMidNode.Completeness then
+  // iMidMargin вызываем метод с координатами : серединной и правой
     Result := PlaceItem(oNode, iMidMargin, iRightMargin)
   else
-  //вызываем метод с координатами: левой границы и серединной
+  // вызываем метод с координатами: левой границы и серединной
     Result := PlaceItem(oNode, iLeftMargin, iMidMargin);
 end;
 
-
+(**
+ * Метод для запуска алгоритма поиска по градиенту
+ *
+ * Параметры:
+ *   oInitialMap - изначальная карта, относительно которой нужно найти решение
+ *
+ * Возвращаемое значение:
+ *   Возвращает true тогда, когда алгоритм смог найти хотя бы одно решение
+ *
+ *)
 Function TGradientAI.Process(oInitialMap: TMap): boolean;
 begin
+  // Сперва очистка списков и инициализация объектов алгоритма
   if FRoot <> nil then Clear;
+  // В дереве вариантов будем использовать элементы дерева с подсчетом веса
   FRoot := TMapEuristicTree.Create(oInitialMap);
+  // В качестве очереди вариантов будем использвоать очередь с сортировкой при вставке
   FPipe := TMapEuristicList.Create;
+  // В качестве списка уникальных вариантов будем использвать простую очередь, как бы фигово это не звучало...
   FCheckList := TMapList.Create;
+
+  // Кладем в очередь вариантов корень всего дерева - элемент с изначальной картой
   FPipe.Send(FRoot);
+  // Его же, за его уникальность, сразу же кладем в очередь уникальных вариантов
   FCheckList.Send(FRoot);
-  FComplexity := fact(oInitialMap.Width * oInitialMap.Height);
+  // Считаем количество всех возможных вариантов состояния поля...
+  FComplexity := fact(oInitialMap.Width * oInitialMap.Height - 1);
+
+  // Запускаем алгоритм поиска пути. Ага, это именно TWidewayAI.FindWay
   Result := FindWay;
+end;
+
+(**
+ * Метод для запуска алгоритма поиска в глубину
+ *
+ * Параметры:
+ *   oInitialMap - изначальная карта, относительно которой нужно найти решение
+ *
+ * Возвращаемое значение:
+ *   Возвращает true тогда, когда алгоритм смог найти хотя бы одно решение
+ *
+ *)
+Function TDeepwayAI.Process(oInitialMap: TMap): boolean;
+begin
+
+end;
+
+(**
+ * Алгоритм поиска в глубину
+ *
+ * Возвращаемое значение:
+ *   Возвращает true тогда, когда было найдено хотя бы одно возможное решение
+ *)
+Function TDeepwayAI.FindWay: boolean;
+begin
+
 end;
 
 end.
