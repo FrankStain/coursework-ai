@@ -57,6 +57,20 @@ type
     B_AI3Start: TButton;
     Bevel3: TBevel;
     Bevel4: TBevel;
+    P_Process2: TPanel;
+    Label5: TLabel;
+    L_AI2SCount: TLabel;
+    Label9: TLabel;
+    L_AI2STotal: TLabel;
+    Label11: TLabel;
+    StaticText9: TStaticText;
+    B_AI2ClearList: TButton;
+    B_AI2Reset: TButton;
+    B_AI2Step: TButton;
+    LB_AI2WayList: TListBox;
+    B_AI2Start: TButton;
+    Bevel5: TBevel;
+    Bevel6: TBevel;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure FormShow(Sender: TObject);
@@ -76,16 +90,24 @@ type
     procedure B_AI3ResetClick(Sender: TObject);
     procedure B_AI3StepClick(Sender: TObject);
     procedure B_AI3ClearListClick(Sender: TObject);
+    procedure B_AI2StartClick(Sender: TObject);
+    procedure B_AI2ResetClick(Sender: TObject);
+    procedure B_AI2StepClick(Sender: TObject);
+    procedure B_AI2ClearListClick(Sender: TObject);
   private
     { Private declarations }
-    GameMap: TMap;
-    oBasicMap: TMap;
-    oWideAI: TWidewayAI;
-    oWideWay: TWaypointList;
-    oGradientAI: TGradientAI;
-    oGradientWay: TWaypointList;
+    GameMap: TMap;               // поле, которое и отображается пользователю
+    oBasicMap: TMap;             // это копия GameMap
+    oWideAI: TWidewayAI;         // объект для поиска в ширину
+    oWideWay: TWaypointList;     // список ходов, найденых с помощью поиска в ширину
+    oGradientAI: TGradientAI;    // объект для поиска по градиенту
+    oGradientWay: TWaypointList; // список ходов, найденых с помощью поиска по градиенту
+    oDeepAI: TDeepwayAI;         // объект для поиска в глубину
+    oDeepWay: TWaypointList;     // список ходов, найденных с помощью поиска в глубину
 
+    // Методы отклика для процессов поиска
     Procedure AI1Process(iStep: integer; iMax: integer);
+    Procedure AI2Process(iStep: integer; iMax: integer);
     Procedure AI3Process(iStep: integer; iMax: integer);
   public
     { Public declarations }
@@ -119,15 +141,20 @@ begin
   oWideWay := TWaypointList.Create;
   oWideAI.OnProcess := AI1Process;//создаем процесс поиска в ширину
 
-  {задаме для метода поиска по градиенту
+  {задаем для метода поиска по градиенту
   основные списки}
   oGradientAI := TGradientAI.Create;
   oGradientWay := TWaypointList.Create;
   oGradientAI.OnProcess := AI3Process;
+
+  oDeepAI := TDeepwayAI.Create;
+  oDeepWay := TWaypointList.Create;
+  oDeepAI.OnProcess := AI2Process;
 end;
 
 procedure TMForm.FormDestroy(Sender: TObject);
 begin
+ //очистка основных списков
   oGradientWay.Free;
   oGradientAI.Free;
   oWideWay.Free;
@@ -139,7 +166,7 @@ procedure TMForm.FormShow(Sender: TObject);
 begin
   SE_MapX.Value := GameMap.Width;//ширина поля
   SE_MapY.Value := GameMap.Height;//высота поля
-  PB_Screen.Color := clGameBackground;
+  PB_Screen.Color := clGameBackground;//цвет
   SetMapSizeButton.Click;//функция задания размера поля
 end;
 
@@ -195,8 +222,11 @@ var
   dm: TPoint;
 begin
   with TPaintBox(Sender).Canvas do begin
-    cs := (ClipRect.Right - ClipRect.Left) div GameMap.Width;
+    cs := (ClipRect.Right - ClipRect.Left) div GameMap.Width;//определяем размер клетки
     dm := Point(X div cs, Y div cs);//определяем коорлинаты где находится мышь
+    
+    {перерисовку осуществляем только тогда, когда мышь пермещается над фишкой
+    которую можно свдинуть или уходит с нее}
     if (dm.X <> MousePoint.X) or (dm.Y <> MousePoint.Y) then
     begin
       bMouseCellActive := GameMap.IsCellMovable(dm.X, dm.Y);//проверяем можно ли передвинуть фишку по данным координатам
@@ -211,7 +241,7 @@ procedure TMForm.SetMapSizeButtonClick(Sender: TObject);
 begin
   SE_MapY.Value := SE_MapX.Value;//размер поля строго квадратной формы
   GameMap.SetSize(SE_MapX.Value, SE_MapY.Value);//задание размера карты
-  FlushMapButton.Click;
+  FlushMapButton.Click;//сбрасываем поле
   PB_Screen.Repaint;//перерисовка
 end;
 
@@ -300,7 +330,7 @@ end;
 {процедура возникает при нажатии на кнопку "Очистить"}
 procedure TMForm.B_AI1ClearListClick(Sender: TObject);
 begin
-//чистим списки поиска в ширину
+  //чистим списки поиска в ширину
   LB_AI1WayList.Clear;
   oWideWay.Clear;
   oWideAI.Clear;
@@ -308,6 +338,9 @@ begin
   GameMap.ClearPeers;//очищаем копии
   oBasicMap := nil;
   PB_Screen.Repaint;//перерисовка
+  if Sender = nil then exit;
+  B_AI2ClearListClick(nil);
+  B_AI3ClearListClick(nil);
 end;
 
 {процедура сброски - возвращает в исходную начальную разыгрываемую ситуацию}
@@ -315,7 +348,9 @@ procedure TMForm.B_AI1ResetClick(Sender: TObject);
 begin
   LB_AI1WayList.Tag := -1;
   LB_AI1WayList.ItemIndex :=  -1;
-  if oBasicMap <> nil then GameMap.Assign(oBasicMap);//копируем исходную карту
+  if oBasicMap <> nil then GameMap.Assign(oBasicMap);//устанавливаем начальную ситуацию, которая
+  //была ранее сохранена в oBasicMap
+  
   PB_Screen.Repaint;//перерисовываем
 end;
 
@@ -338,16 +373,24 @@ end;
 {процесс срабатывает при поиске в ширину}
 Procedure TMForm.AI1Process(iStep: integer; iMax: integer);
 begin
-  L_AI1SCount.Caption := IntToStr(iStep);//выводи сообщение какой шаг
-  L_AI1STotal.Caption := IntToStr(iMax);//все множество решений игры
+  L_AI1SCount.Caption := IntToStr(iStep); //выводи сообщение какой шаг
+  L_AI1STotal.Caption := IntToStr(iMax);  //все множество решений игры
+  Application.ProcessMessages;
+end;
+
+{процесс срабатывает при поиске в глубину}
+Procedure TMForm.AI2Process(iStep: integer; iMax: integer);
+begin
+  L_AI2SCount.Caption := IntToStr(iStep); //выводи сообщение какой шаг
+  L_AI2STotal.Caption := IntToStr(iMax);  //все множество решений игры
   Application.ProcessMessages;
 end;
 
 {процесс запуска при поиска по градиенту}
 Procedure TMForm.AI3Process(iStep: integer; iMax: integer);
 begin
-  L_AI3SCount.Caption := IntToStr(iStep);//какой шаг по счету
-  L_AI3STotal.Caption := IntToStr(iMax);//все множество ходов
+  L_AI3SCount.Caption := IntToStr(iStep); //какой шаг по счету
+  L_AI3STotal.Caption := IntToStr(iMax);  //все множество ходов
   Application.ProcessMessages;
 end;
 
@@ -412,6 +455,75 @@ begin
   GameMap.ClearPeers;
   oBasicMap := nil;
   PB_Screen.Repaint;//перерисовываем
+  if Sender = nil then exit;
+  B_AI1ClearListClick(nil);
+  B_AI2ClearListClick(nil);
+end;
+
+procedure TMForm.B_AI2StartClick(Sender: TObject);
+var
+  iWaypointId: integer;
+  oPoint: TWaypoint;
+begin
+  B_AI2ClearList.Click;
+  P_Process2.Visible := true;
+  oDeepAI.Process(GameMap);//запускаем процесс поискав ширину
+  //запускаем процедуру поиска маршрута решения
+  if oDeepAI.GetRightPass(oDeepWay) then
+  begin
+    if oBasicMap <> nil then oBasicMap.Free;
+    oBasicMap := GameMap.Peer;
+    LB_AI2WayList.Clear;
+    iWaypointId := 0;
+    //выстраиваем списко ходов для получения выигрыша
+    while iWaypointId < oDeepWay.Count do
+    begin
+      oPoint := oDeepWay.Point[iWaypointId];
+      LB_AI2WayList.Items.AddObject(format('Ход [%d, %d]', [oPoint.X + 1, oPoint.Y + 1]), oPoint);
+      inc(iWaypointId);
+    end;
+  end;
+  //P_Process.Visible := false;
+end;
+
+procedure TMForm.B_AI2ResetClick(Sender: TObject);
+begin
+  LB_AI2WayList.Tag := -1;
+  LB_AI2WayList.ItemIndex :=  -1;
+  if oBasicMap <> nil then GameMap.Assign(oBasicMap);//устанавливаем начальную ситуацию, которая
+  //была ранее сохранена в oBasicMap
+
+  PB_Screen.Repaint;//перерисовываем
+end;
+
+procedure TMForm.B_AI2StepClick(Sender: TObject);
+var
+  oPoint: TWaypoint;
+begin
+  if GameMap.IsValid or (1 > LB_AI2WayList.Count) then exit;//если сразу было решение при начальной раскладке, то выходим
+  if LB_AI2WayList.Tag <> LB_AI2WayList.ItemIndex then B_AI2Reset.Click;//если мы щелкнули на каком-то шаге мышью, а он не
+  //совпадает с реальным шагом, то сбрасываем Tag
+  
+  LB_AI2WayList.ItemIndex := LB_AI2WayList.ItemIndex + 1;//берем следующий шаг
+  oPoint := TWaypoint(LB_AI2WayList.Items.Objects[LB_AI2WayList.ItemIndex]);//определяем шаг
+  GameMap.MoveCell(oPoint.X, oPoint.Y);//выполняем перемещение фишки по заданным коорлинатам
+  PB_Screen.Repaint;//перерисовываем карту игры
+  LB_AI2WayList.Tag := LB_AI2WayList.ItemIndex;
+end;
+
+procedure TMForm.B_AI2ClearListClick(Sender: TObject);
+begin
+  //чистим списки поиска в ширину
+  LB_AI2WayList.Clear;
+  oDeepWay.Clear;
+  oDeepAI.Clear;
+  if oBasicMap <> nil then GameMap.Assign(oBasicMap);
+  GameMap.ClearPeers;//очищаем копии
+  oBasicMap := nil;
+  PB_Screen.Repaint;//перерисовка
+  if Sender = nil then exit;
+  B_AI1ClearListClick(nil);
+  B_AI3ClearListClick(nil);
 end;
 
 end.

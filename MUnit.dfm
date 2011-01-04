@@ -47,7 +47,7 @@ object MForm: TMForm
     Top = 0
     Width = 300
     Height = 300
-    ActivePage = TabSheet4
+    ActivePage = TabSheet3
     Align = alLeft
     TabOrder = 1
     object TabSheet1: TTabSheet
@@ -55,7 +55,7 @@ object MForm: TMForm
       object StaticText1: TStaticText
         Left = 0
         Top = 0
-        Width = 292
+        Width = 100
         Height = 17
         Align = alTop
         BevelKind = bkSoft
@@ -171,7 +171,7 @@ object MForm: TMForm
       object StaticText2: TStaticText
         Left = 0
         Top = 0
-        Width = 99
+        Width = 292
         Height = 17
         Align = alTop
         BevelKind = bkSoft
@@ -286,7 +286,7 @@ object MForm: TMForm
         object StaticText7: TStaticText
           Left = 1
           Top = 1
-          Width = 53
+          Width = 73
           Height = 17
           Align = alTop
           BevelKind = bkSoft
@@ -307,10 +307,24 @@ object MForm: TMForm
     object TabSheet3: TTabSheet
       Caption = #1048#1048' 2'
       ImageIndex = 2
+      object Bevel5: TBevel
+        Left = 215
+        Top = 110
+        Width = 75
+        Height = 11
+        Shape = bsTopLine
+      end
+      object Bevel6: TBevel
+        Left = 215
+        Top = 45
+        Width = 75
+        Height = 11
+        Shape = bsTopLine
+      end
       object StaticText3: TStaticText
         Left = 0
         Top = 0
-        Width = 102
+        Width = 292
         Height = 17
         Align = alTop
         BevelKind = bkSoft
@@ -325,6 +339,122 @@ object MForm: TMForm
         ParentColor = False
         ParentFont = False
         TabOrder = 0
+      end
+      object P_Process2: TPanel
+        Left = 215
+        Top = 150
+        Width = 75
+        Height = 116
+        TabOrder = 1
+        Visible = False
+        object Label5: TLabel
+          Left = 5
+          Top = 30
+          Width = 65
+          Height = 13
+          Alignment = taCenter
+          AutoSize = False
+          Caption = #1055#1088#1086#1081#1076#1077#1085#1086
+        end
+        object L_AI2SCount: TLabel
+          Left = 5
+          Top = 46
+          Width = 65
+          Height = 13
+          Alignment = taCenter
+          AutoSize = False
+          Caption = '0'
+        end
+        object Label9: TLabel
+          Left = 5
+          Top = 62
+          Width = 65
+          Height = 13
+          Alignment = taCenter
+          AutoSize = False
+          Caption = #1080#1079
+        end
+        object L_AI2STotal: TLabel
+          Left = 5
+          Top = 78
+          Width = 65
+          Height = 13
+          Alignment = taCenter
+          AutoSize = False
+          Caption = '0'
+        end
+        object Label11: TLabel
+          Left = 5
+          Top = 95
+          Width = 65
+          Height = 13
+          Alignment = taCenter
+          AutoSize = False
+          Caption = #1074#1072#1088#1080#1072#1085#1090#1086#1074
+        end
+        object StaticText9: TStaticText
+          Left = 1
+          Top = 1
+          Width = 73
+          Height = 17
+          Align = alTop
+          BevelKind = bkSoft
+          BevelOuter = bvSpace
+          Caption = #1055#1086#1080#1089#1082'...'
+          Color = clMenuHighlight
+          Font.Charset = DEFAULT_CHARSET
+          Font.Color = clMenuText
+          Font.Height = -11
+          Font.Name = 'MS Sans Serif'
+          Font.Style = [fsBold]
+          ParentColor = False
+          ParentFont = False
+          TabOrder = 0
+        end
+      end
+      object B_AI2ClearList: TButton
+        Left = 215
+        Top = 125
+        Width = 75
+        Height = 20
+        Caption = #1054#1095#1080#1089#1090#1080#1090#1100
+        TabOrder = 2
+        OnClick = B_AI2ClearListClick
+      end
+      object B_AI2Reset: TButton
+        Left = 215
+        Top = 60
+        Width = 75
+        Height = 20
+        Caption = #1057#1073#1088#1086#1089#1080#1090#1100
+        TabOrder = 3
+        OnClick = B_AI2ResetClick
+      end
+      object B_AI2Step: TButton
+        Left = 215
+        Top = 85
+        Width = 75
+        Height = 20
+        Caption = #1064#1072#1075
+        TabOrder = 4
+        OnClick = B_AI2StepClick
+      end
+      object LB_AI2WayList: TListBox
+        Left = 5
+        Top = 20
+        Width = 206
+        Height = 246
+        ItemHeight = 13
+        TabOrder = 5
+      end
+      object B_AI2Start: TButton
+        Left = 215
+        Top = 20
+        Width = 75
+        Height = 20
+        Caption = #1048#1089#1082#1072#1090#1100
+        TabOrder = 6
+        OnClick = B_AI2StartClick
       end
     end
     object TabSheet4: TTabSheet
@@ -448,16 +578,16 @@ object MForm: TMForm
         Left = 215
         Top = 60
         Width = 75
-        Height = 21
+        Height = 20
         Caption = #1057#1073#1088#1086#1089#1080#1090#1100
         TabOrder = 3
         OnClick = B_AI3ResetClick
       end
       object B_AI3Step: TButton
         Left = 215
-        Top = 88
+        Top = 85
         Width = 75
-        Height = 17
+        Height = 20
         Caption = #1064#1072#1075
         TabOrder = 4
         OnClick = B_AI3StepClick

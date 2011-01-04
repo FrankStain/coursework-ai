@@ -6,6 +6,10 @@ uses
   Windows, Classes, SysUtils, MapUnit;
 
 Type
+  //объектный тип - делегирование
+  //переменной такого типа можно присвоить указатель на метод  класса
+  //TOnProcessEvent - название типа
+  //важно, чтобы медот имел два параметра типа integer
   TOnProcessEvent = Procedure (iStep: integer; iMax: integer) of object;
 
   TMapTree = class
@@ -40,23 +44,43 @@ Type
       Property Depth: integer read GetDepth;
   end;
 
+  (**
+   * Список для хранения элементов дерева, вспомогательная структура.
+   * Необходим для хранения и обработки элементов дерева в строго заданном порядке.
+   * Применяется в алгоритмах поиска. Имеет FIFO и LIFO механизмы укладки элементов.
+   * Доступ к обоим механизмам синхронный, т.е. уложить элементы можно в стиле FIFO,
+   * а доставать - по принципам LIFO.
+   *
+   * Под элементом, в рамках данного класса и всех наследников, подразумивается указатель
+   * на элемент дерева вариантов.
+   *)
   TMapList = class
     Private
+      // Сам по себе список указателей, все элементы хранятся в нем
       FList: TList;
 
     Protected
+      // Возвращает число элементов в списке
       Function GetCount: integer;
+      // Возвращает элемент по его индексу
       Function GetItem(iId: integer): TMapTree;
 
     Public
       Constructor Create;
       Destructor Destroy; override;
 
+      // FIFO: добавляет элемент в список по принципу очереди
       Procedure Send(oMap: TMapTree); virtual;
+      // LIFO: добавляет элемент в список по принципу стека
+      Procedure Push(oMap: TMapTree); virtual;
+      // FIFO & LIFO: изымает элемент из списка и возвращает в качестве результата
       Function Recv: TMapTree;
+      // Очищает список элементов
       Procedure Clear;
 
+      // Число элементов списка
       Property Count: integer read GetCount;
+      // Доступ к элементу по индексу
       Property Item[index: integer]: TMapTree read GetItem;
   end;
 
@@ -156,7 +180,8 @@ Type
       FMaxDeepLevel: integer;
 
       Function FindWay: boolean; override;
-    
+      //Function StepDeeper(oActualStep: TMapTree): boolean;
+
     Public
       Function Process(oInitialMap: TMap): boolean; override;
       
@@ -165,7 +190,12 @@ Type
 implementation
 
 uses Types;
-{функция определяет все мнодество ходов - факториал}
+
+{**
+ * Функция определяет все множество ходов
+ * в реалии подсчитывает факториал
+ * (для игры в 9, возможно 9! ходов)                                
+ *}
 function fact(X: integer): integer;
 begin
   Result := X;
@@ -175,6 +205,11 @@ begin
   end;
 end;
 
+(**
+ *
+ *
+ *
+ *)
 Constructor TMapTree.Create(oParent: TMapTree);
 begin
   Inherited Create;//вызов родительского метода конструктора
@@ -235,7 +270,14 @@ begin
   FBranches[3] := nil;
 end;
 
-{функция создания копии карты поля}
+(**
+ * Создает отросток элемента.
+ * Всего таких отростков может быть только 4.
+ *
+ * Возвращаемое значение:
+ *   Возвращает объект Элемента дерева, являющийся отростком и полной копией самого элемента.
+ *   Если у элемента уже есть 4 отростка, метод вернет nil.
+ *)
 Function TMapTree.MakeBranch: TMapTree;
 begin
   if FBranches[3] <> nil then Result := nil
@@ -243,9 +285,11 @@ begin
 end;
 
 
-{функция определения длины решения
-идем снизу вверх, цепляя порождающую вершину
-при заходе в цикл мы уже как бы имеем один шаг для корня}
+{**
+ * Функция определения длины решения
+ * идем снизу вверх, цепляя порождающую вершину
+ * при заходе в цикл мы уже как бы имеем один шаг для корня
+ *}
 Procedure TMapTree.MarkAsComplited;
 var
   oRoot: TMapTree;
@@ -264,11 +308,15 @@ begin
 end;
 
 
-{функция проверки на уникальность данной раскладки поля
-т.е. если такое поелу уже встретилось, то функция вернет true
-значит такое повторное поле обрабатывать не стоит
-FMap - поле в чек-таблице с переданным номером
-oMap - поле с возможно осуществимым ходом}
+{**
+ * Функция проверки на уникальность данной раскладки поля
+ * т.е. если такое поелу уже встретилось, то функция вернет true
+ * значит такое повторное поле обрабатывать не стоит
+ * FMap - поле в чек-таблице с переданным номером
+ *
+ * Параметры:
+ *   oMap - поле с возможно осуществимым ходом
+ *}
 Function TMapTree.IsMapsEqual(oMap: TMapTree): boolean;
 var
   x: integer;
@@ -285,6 +333,7 @@ begin
     inc(y);
   end;
 end;
+
 
 Procedure TMapTree.ClearBranches;
 var
@@ -307,7 +356,9 @@ begin
   Result := FBranches[index];
 end;
 
-{Функция возвращает глубину текущей вершины относительно корня всего деревa}
+{**
+ * Функция возвращает глубину текущей вершины относительно корня всего деревa
+ *}
 Function TMapTree.GetDepth: integer;
 var
   oRoot: TMapTree;
@@ -332,26 +383,60 @@ begin
   inherited;
 end;
 
+{**
+ * Реализация FIFO-принципа добавления элемента, добавляет элемент в конец списка
+ *
+ * Параметры:
+ *   oMap - Элемент, который необходимо добавить в список
+ *}
 Procedure TMapList.Send(oMap: TMapTree);
 begin
   FList.Add(oMap);
 end;
 
+(**
+ * Реализация LIFO-принципа добавления элемента, добавляет элемент к началу списка
+ *
+ * Параметры:
+ *   oMap - Элемент, который необходимо добавить в список
+ *
+ *)
+Procedure TMapList.Push(oMap: TMapTree);
+begin
+  FList.Insert(0, oMap);
+end;
 
-{функция очистки  элеменат из очереди}
+(**
+ * Функция изъятия элемента из очереди
+ * попутно элемент из очереди удаляет
+ *
+ * возвращаемое значение:
+ *   возвращает объект Элемента дерева.
+ *   если элементов больше нет в очереди, метод вернет nil.
+ *)
 Function TMapList.Recv: TMapTree;
 begin
   Result := nil;
   if FList.Count < 1 then exit;
+  //Извлекаем элемент из начала очереди
   Result := TMapTree(FList.Items[0]);
+  //Удаляем извлемент
   FList.Delete(0);
 end;
+
 
 Procedure TMapList.Clear;
 begin
   while FList.Count > 0 do FList.Delete(0);
 end;
 
+
+(**
+ * Функция определяет количество элементов в очереди
+ *
+ * Возвращаемое значение:
+ *   Число элементов в очереди
+ *)
 Function TMapList.GetCount: integer;
 begin
   Result := FList.Count;
@@ -452,15 +537,33 @@ begin
   inherited;
 end;
 
+(**
+ * Метод для запуска алгоритма поиска  в ширину
+ *
+ * Параметры:
+ *   oInitialMap - изначальная карта, относительно которой нужно найти решение
+ *
+ * Возвращаемое значение:
+ *   Возвращает true тогда, когда алгоритм смог найти хотя бы одно решение
+ *
+ *)
 Function TWidewayAI.Process(oInitialMap: TMap): boolean;
 begin
+  // Сперва очистка списков и инициализация объектов алгоритма
   if FRoot <> nil then Clear;
+  // В дереве вариантов будем использовать элементы дерева
   FRoot := TMapTree.Create(oInitialMap);
+  //Создаем обычную очедерь - по правилу FIFO
   FPipe := TMapList.Create;
+  //Создаем чек-таблицу, хранящую по одному экземпляру состоняия поля
   FCheckList := TMapList.Create;
+  //Кладем в очередь вариантов корень всего дерева - элемент с изначальной картой (Send-виртуальный)
   FPipe.Send(FRoot);
+  // Его же, за его уникальность, сразу же кладем в очередь уникальных вариантов
   FCheckList.Send(FRoot);
-  FComplexity := fact(oInitialMap.Width * oInitialMap.Height);//определяем все множество ходов
+  //Считаем количество всех возможных вариантов состояния поля...
+  FComplexity := fact(oInitialMap.Width * oInitialMap.Height - 1);
+  //Запускаем алгоритм поиска в ширину
   Result := FindWay;
 end;
 
@@ -468,26 +571,26 @@ end;
 {реализация метода поиска в ширину}
 Function TWidewayAI.FindWay: boolean;
 var
-  oCurMap: TMapTree;//текущее рассматриваемое поле
-  oNewMap: TMapTree;//новое поле для совершения хода
+  oCurMap: TMapTree;     //текущее рассматриваемое поле
+  oNewMap: TMapTree;     //новое поле для совершения хода
   ptCenter: TPoint;
   ptRootCenter: TPoint;
-  ptWalk: TPoint;
+  ptWalk: TPoint;        //координаты возможно осуществляемого хода
   iStepId: integer;
   iCheckListId: integer;
 begin
   Result := false;
-   {заходим в цикл поиска пока в очереди хоть что-то есть}
+  {заходим в цикл поиска пока в очереди хоть что-то есть}
   while FPipe.Count > 0 do begin
     oCurMap := FPipe.Recv; //вытаскиваем поле из очереди, попутно его удаляя
     ptCenter := oCurMap.Map.GetEmptyCell;//определение пустой клетки
-      {относительно пустой клетки можно сделать только 4 хода - max}
+    {относительно пустой клетки можно сделать только 4 хода - max}
     for iStepId := 0 to 3 do begin
       with ptWalk do begin
         X := ptCenter.X + arMoveDirections[iStepId, 0];
         Y := ptCenter.Y + arMoveDirections[iStepId, 1];
       end;
-          //если такой ход сделать нельзя то идем на следующий шаг цикла
+      //если такой ход сделать нельзя то идем на следующий шаг цикла
       if not oCurMap.Map.IsCellMovable(ptWalk.X, ptWalk.Y) then continue;
       //делаем проверку не повторяет ли этот ход предыдущий:
       //проверка делается пог местоположению пустой клетки
@@ -605,7 +708,6 @@ begin
   end;
 end;
 
-
 {расчет N - формула тупика
 поле FComplitenes - хранит вес хода}
 Procedure TMapEuristicTree.FixCompletenessLevel;
@@ -650,7 +752,7 @@ end;
  *)
 Procedure TMapEuristicList.Send(oMap: TMapTree);
 begin
-  // Если класс добавляемого объекта не унаследован от TMapEuristicTree, то метод прийдется завершить.
+  // Если класс добавляемого объекта не унаследован от TMapEuristicTree, то метод придется завершить.
   if not (oMap is TMapEuristicTree) then exit;
   // Сперва нужно пересчитать вес элемента
   TMapEuristicTree(oMap).FixCompletenessLevel;
@@ -772,7 +874,8 @@ end;
  *)
 Function TDeepwayAI.Process(oInitialMap: TMap): boolean;
 begin
-
+  FMaxDeepLevel := 4 * (oInitialMap.Width * oInitialMap.Width - 1);
+  Result := inherited Process(oInitialMap);
 end;
 
 (**
@@ -782,8 +885,85 @@ end;
  *   Возвращает true тогда, когда было найдено хотя бы одно возможное решение
  *)
 Function TDeepwayAI.FindWay: boolean;
-begin
+var
+  oActualStep: TMapTree; // Элемент текущего шага рекурсии
+  oNextStep: TMapTree;   // Элемент, предположительно, следующего шага рекурсии
+  iStepId: byte;         // Индекс хода для массива возможных ходов
+  ptRootCenter: TPoint;  // Положение пустой клетки у корна текущего шага
+  ptCenter: TPoint;      // Положение пустой клетки у текущего шага
+  ptWalk: TPoint;        // Положение фишки, которая будет передвинута
+  iCheckListId: integer; // Индекс чек-таблицы, для проверки элемента на повторения
 
+begin
+  Result := false;
+  // Без изъятия из очереди, получаем элемент для текущего шага, удалять его будет кто-нибудь другой
+  oActualStep := FPipe.Item[0];
+
+  // Если текущий элемент удовлетворяет критериям цели, помечаем его
+  // и выходим с положительным результатом
+  if oActualStep.Map.IsValid then begin
+    oActualStep.MarkAsComplited;
+    Result := true;
+    exit;
+  end;
+
+  // Если мы залезли слишком глубоко, то глубже лезть не уже не станем
+  if FMaxDeepLevel <= oActualStep.Depth then exit;
+
+  // Получаем координаты пустой клетки элемента
+  ptCenter := oActualStep.Map.GetEmptyCell;
+  for iStepId := 0 to 3 do begin
+    // Находим координаты фишки, которую надо двигать согласно текущему индексу хода
+    with ptWalk do begin
+      X := ptCenter.X + arMoveDirections[iStepId, 0];
+      Y := ptCenter.Y + arMoveDirections[iStepId, 1];
+    end;
+
+    // Если такой ход сделать нельзя то переходим к следующему варианту хода
+    if not oActualStep.Map.IsCellMovable(ptWalk.X, ptWalk.Y) then continue;
+
+    // делаем проверку не повторяет ли этот ход предыдущий:
+    // проверка делается пог местоположению пустой клетки
+    if oActualStep.Root <> nil then begin
+      //определяем координаты пустой клетки у поля корня текущего элемента.
+      ptRootCenter := oActualStep.Root.Map.GetEmptyCell;
+      //если ход равен предыдущему, то на следующий шаг цикла
+      if (ptRootCenter.X = ptWalk.X) and (ptRootCenter.Y = ptWalk.Y) then continue;
+    end;
+
+    // Получаем отросток элемента для совершения хода
+    oNextStep := oActualStep.MakeBranch;
+
+    // Но если этот отросток лежит дальше найденного решения, делать с ним ничего не будем
+    if (FRoot.Weight > 0) and (FRoot.Weight < oNextStep.Depth) then continue;
+
+    // Осуществляем желаемый вариант хода
+    oNextStep.Map.MoveCell(ptWalk.X, ptWalk.Y);
+
+    // Делаем проверку, не встречался ли нам уже элемент с таким же состоянием поля
+    iCheckListId := FCheckList.Count;
+    while iCheckListId > 0  do begin
+      dec(iCheckListId);
+      if FCheckList.Item[iCheckListId].IsMapsEqual(oNextStep) then break;
+    end;
+    // Если встречался, то ничего с ним больше не делаем
+    if iCheckListId > 0 then continue;
+
+    // Добавляем элемент в чек-лист, а вдруг он еще раз встретится?
+    FCheckList.Send(oNextStep);
+    // Сигнализируем наружу, что мы не спим, что работа во всю кипит ;-)
+    ProcessEvent(FCheckList.Count, FComplexity);
+
+    // Добавляем новый элемент в список по принципу стека
+    FPipe.Push(oNextStep);
+    // Углубляемся...
+    Result := FindWay;
+    // Достаем элемент из стека, больше он, пожалуй, не понадобится
+    FPipe.Recv;
+    // Если на текущем шаге встретилась ситуация с выигрышем, то
+    // можно не проверять остальные варианты ходов и сразу выйти наружу
+    if Result and (oActualStep.Weight = 3) then break;
+  end;
 end;
 
 end.
