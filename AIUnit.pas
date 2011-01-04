@@ -12,35 +12,76 @@ Type
   //важно, чтобы медот имел два параметра типа integer
   TOnProcessEvent = Procedure (iStep: integer; iMax: integer) of object;
 
+  (**
+   * Элемент дерева вариантов.
+   * Служит для создания структуры квадратичного дерева (с четырьмя отростками).
+   *
+   * Терминология:
+   *   Дерево - рекурсивная структура данных, в которой элементы связаны по принципу "родитель - несколько потомков"
+   *   Корень дерева - элемент дерева, не имеющий родительского элемента
+   *   Отросток элемента - элемент, являющийся потомком другого элемента
+   *   Корень элемента - непосредственный родитель элемента деерва
+   *
+   * Каждый отросток этого элемента станет некоторого рода вариантом этого элемента.
+   * Изначально, отросток будет представлять из себя полную копию самого элемента.
+   * Будучи копией, отросток не будет содержать ни одного адреса данных своего корня, соответствие
+   * копии будет только на уровне данных, но не на уровне их адресов.
+   * А когда в отростке, согласно варианту, будет совершен ход, отросток из копии станет
+   * вариантом элемента, т.к. утратит свойства копии.
+   *
+   * На самом деле, отростков у элемента может быть только три... так как один из четырех,
+   * возможных ходов будет откатывать предыдущий ход, что недопустимо при поиске решений.
+   * Но... лучше провести прямое соответствие между числом возможных ходов и допустимым
+   * количеством отростков элемента дерева.
+   *)
   TMapTree = class
     Protected
+      // Вес элемента, число ходов, с сего момента оставшихся до выигрыша
       FWeight: integer;
+      // Карта, содержит уникальное состояние поля, сама по себе карта является состоянием элемента
       FMap: TMap;
+      // Указатель на родительский элемент, на корень данного элемента, у корня дерева там будет лежать nil
       FParent: TMapTree;
-      FBranches: array[0..3] of TMapTree;//копия квадро-дерево
+      // Набор указателей на отростки элемента, в каждой ячейке nil или указатель на отросток
+      FBranches: array[0..3] of TMapTree;
 
+      // Конструктор копирования, фактически он создаст элемент-копию, который сразу же станет отростком oParent
       Constructor Create(oParent: TMapTree); overload;
 
+      // Инициализация полей элемента
       Procedure init;
+      // Добавление элемента в список отростков
       Procedure AddBranch(oValue: TMapTree);
+      // Удаление элемента из списка отростков
       Procedure DeleteBranch(oValue: TMapTree);
 
+      // Возвращает отросток по его индексу
       Function GetBranch(index: integer): TMapTree;
+      // Возвращает глубину элемента относительно корня дерева
       Function GetDepth: integer;
 
     Public
       Constructor Create(oMap: TMap); overload;
       Destructor Destroy; override;
 
+      // Создает и возвращает отросток дерева
       Function MakeBranch: TMapTree; virtual;
+      // Очищает, удаляя и сами объекты, список отростков
       Procedure ClearBranches;
+      // Помечает элемент, состояние которого свидетельствует о достижении цели
       Procedure MarkAsComplited;
+      // Проверяет, не эквивалентно ли состояние элемента состоянию параметра
       Function IsMapsEqual(oMap: TMapTree): boolean;
 
+      // Корень элемента
       Property Root: TMapTree read FParent;
+      // Карта (состояние) элемента
       Property Map: TMap read FMap;
+      // Отросток по индексу
       Property Branch[index: integer]: TMapTree read GetBranch;
+      // Вес элемента
       Property Weight: integer read FWeight;
+      // Глубина элемента
       Property Depth: integer read GetDepth;
   end;
 
@@ -84,11 +125,19 @@ Type
       Property Item[index: integer]: TMapTree read GetItem;
   end;
 
+  // Предекларирование, определние списка ходов будет ниже
   TWaypointList = class;
 
+  (**
+   * Точка маршрута, иными словами - ход.
+   * Используется для инкапсуляции пары координат хода и наделения их функциями автоматизации.
+   * Семантически, ход содержит координаты фишки, которую необходимо будет передвинуть
+   *)
   TWaypoint = class
     Private
+      // Родительский список ходов, предекларирование было необходимло именно для этого объявления
       FList: TWaypointList;
+      // Пара, координаты хода
       FX: integer;
       FY: integer;
 
@@ -96,32 +145,50 @@ Type
       Constructor Create(X, Y: integer; oList: TWaypointList);
       Destructor Destroy; override;
 
+      // Свойства только для чтения, служат для доступа к значениям хода
       Property X: integer read FX;
       Property Y: integer read FY;
       Property Parent: TWaypointList read FList;
   end;
 
+  (**
+   * Список ходов. Добавление ходов организовано по принципу FIFO.
+   * Используется как контейнер для размещения самих ходов.
+   *
+   * Под ходом, в рамках данного класса, будет подразумиваться указатель на объект класса TWaypoint
+   *)
   TWaypointList = class
     Private
+      // Список, в котором и будут храниться ходы
       FList: TList;
 
     Protected
+      // Добавление хода в список
       Procedure AddPoint(oPoint: TWaypoint);
+      // Удаление хода из списка, только изъятие из списка, без удаления объекта хода
       Procedure DeletePoint(oPoint: TWaypoint);
 
+      // Получение количества ходов
       Function GetCount: integer;
+      // Получение необходимого хода по его индексу
       Function GetPoint(iId: integer): TWaypoint;
 
     Public
       Constructor Create;
       Destructor Destroy; override;
 
+      // Добавление хода по его паре координат
       Function Add(X, Y: integer): TWaypoint;
+      // Удаление хода по его фактическому адресу
       Procedure Delete(var oPoint: TWaypoint); overload;
+      // Удаление хода по его индексу
       Procedure Delete(iId: integer); overload;
+      // Очистка списка ходов
       Procedure Clear;
 
+      // Только для чтения, возвращает количество ходов в списке
       Property Count: integer read GetCount;
+      // Только для чтения, возвращает необходимый ход по его индексу
       Property Point[index: integer]: TWaypoint read GetPoint;
   end;
 
@@ -874,7 +941,7 @@ end;
  *)
 Function TDeepwayAI.Process(oInitialMap: TMap): boolean;
 begin
-  FMaxDeepLevel := 4 * (oInitialMap.Width * oInitialMap.Width - 1);
+  FMaxDeepLevel := 4 * (oInitialMap.Width * 2 - 2)(*)(oInitialMap.Width * oInitialMap.Width - 1)(**);
   Result := inherited Process(oInitialMap);
 end;
 
@@ -957,12 +1024,12 @@ begin
     // Добавляем новый элемент в список по принципу стека
     FPipe.Push(oNextStep);
     // Углубляемся...
-    Result := FindWay;
+    if FindWay then Result := true;
     // Достаем элемент из стека, больше он, пожалуй, не понадобится
     FPipe.Recv;
     // Если на текущем шаге встретилась ситуация с выигрышем, то
     // можно не проверять остальные варианты ходов и сразу выйти наружу
-    if Result and (oActualStep.Weight = 3) then break;
+    if (oActualStep.Weight > 0) and Result and (oActualStep.Weight < 4) then break;
   end;
 end;
 
