@@ -629,7 +629,7 @@ begin
   // Его же, за его уникальность, сразу же кладем в очередь уникальных вариантов
   FCheckList.Send(FRoot);
   //Считаем количество всех возможных вариантов состояния поля...
-  FComplexity := fact(oInitialMap.Width * oInitialMap.Height - 1);
+  FComplexity := fact(oInitialMap.Width * oInitialMap.Height);
   //Запускаем алгоритм поиска в ширину
   Result := FindWay;
 end;
@@ -923,7 +923,7 @@ begin
   // Его же, за его уникальность, сразу же кладем в очередь уникальных вариантов
   FCheckList.Send(FRoot);
   // Считаем количество всех возможных вариантов состояния поля...
-  FComplexity := fact(oInitialMap.Width * oInitialMap.Height - 1);
+  FComplexity := fact(oInitialMap.Width * oInitialMap.Height);
 
   // Запускаем алгоритм поиска пути. Ага, это именно TWidewayAI.FindWay
   Result := FindWay;
@@ -941,7 +941,7 @@ end;
  *)
 Function TDeepwayAI.Process(oInitialMap: TMap): boolean;
 begin
-  FMaxDeepLevel := 4 * (oInitialMap.Width * 2 - 2)(*)(oInitialMap.Width * oInitialMap.Width - 1)(**);
+  FMaxDeepLevel := 4 * (oInitialMap.Width * oInitialMap.Width - 1);
   Result := inherited Process(oInitialMap);
 end;
 
@@ -975,7 +975,7 @@ begin
   end;
 
   // Если мы залезли слишком глубоко, то глубже лезть не уже не станем
-  if FMaxDeepLevel <= oActualStep.Depth then exit;
+  if FMaxDeepLevel < oActualStep.Depth then exit;
 
   // Получаем координаты пустой клетки элемента
   ptCenter := oActualStep.Map.GetEmptyCell;
@@ -1014,7 +1014,7 @@ begin
       if FCheckList.Item[iCheckListId].IsMapsEqual(oNextStep) then break;
     end;
     // Если встречался, то ничего с ним больше не делаем
-    if iCheckListId > 0 then continue;
+    if (iCheckListId > 0) and (FCheckList.Item[iCheckListId].Weight = 0) then continue;
 
     // Добавляем элемент в чек-лист, а вдруг он еще раз встретится?
     FCheckList.Send(oNextStep);
@@ -1029,7 +1029,7 @@ begin
     FPipe.Recv;
     // Если на текущем шаге встретилась ситуация с выигрышем, то
     // можно не проверять остальные варианты ходов и сразу выйти наружу
-    if (oActualStep.Weight > 0) and Result and (oActualStep.Weight < 4) then break;
+    if Result and (oActualStep.Weight in [1..3]) then break;
   end;
 end;
 

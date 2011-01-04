@@ -335,12 +335,12 @@ begin
   oWideWay.Clear;
   oWideAI.Clear;
   if oBasicMap <> nil then GameMap.Assign(oBasicMap);
-  GameMap.ClearPeers;//очищаем копии
-  oBasicMap := nil;
+  //GameMap.ClearPeers;//очищаем копии
+  //oBasicMap := nil;
   PB_Screen.Repaint;//перерисовка
-  if Sender = nil then exit;
-  B_AI2ClearListClick(nil);
-  B_AI3ClearListClick(nil);
+  //if Sender = nil then exit;
+  //B_AI2ClearListClick(nil);
+  //B_AI3ClearListClick(nil);
 end;
 
 {процедура сброски - возвращает в исходную начальную разыгрываемую ситуацию}
@@ -452,12 +452,12 @@ begin
   oWideWay.Clear;
   oWideAI.Clear;
   if oBasicMap <> nil then GameMap.Assign(oBasicMap);
-  GameMap.ClearPeers;
-  oBasicMap := nil;
+  //GameMap.ClearPeers;
+  //oBasicMap := nil;
   PB_Screen.Repaint;//перерисовываем
-  if Sender = nil then exit;
-  B_AI1ClearListClick(nil);
-  B_AI2ClearListClick(nil);
+  //if Sender = nil then exit;
+  //B_AI1ClearListClick(nil);
+  //B_AI2ClearListClick(nil);
 end;
 
 procedure TMForm.B_AI2StartClick(Sender: TObject);
@@ -518,12 +518,12 @@ begin
   oDeepWay.Clear;
   oDeepAI.Clear;
   if oBasicMap <> nil then GameMap.Assign(oBasicMap);
-  GameMap.ClearPeers;//очищаем копии
-  oBasicMap := nil;
+  //GameMap.ClearPeers;//очищаем копии
+  //oBasicMap := nil;
   PB_Screen.Repaint;//перерисовка
-  if Sender = nil then exit;
-  B_AI1ClearListClick(nil);
-  B_AI3ClearListClick(nil);
+  //if Sender = nil then exit;
+  //B_AI1ClearListClick(nil);
+  //B_AI3ClearListClick(nil);
 end;
 
 end.

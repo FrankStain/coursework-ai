@@ -47,7 +47,7 @@ object MForm: TMForm
     Top = 0
     Width = 300
     Height = 300
-    ActivePage = TabSheet3
+    ActivePage = TabSheet4
     Align = alLeft
     TabOrder = 1
     object TabSheet1: TTabSheet
@@ -55,7 +55,7 @@ object MForm: TMForm
       object StaticText1: TStaticText
         Left = 0
         Top = 0
-        Width = 100
+        Width = 292
         Height = 17
         Align = alTop
         BevelKind = bkSoft
