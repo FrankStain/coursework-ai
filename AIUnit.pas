@@ -29,10 +29,6 @@ Type
    * А когда в отростке, согласно варианту, будет совершен ход, отросток из копии станет
    * вариантом элемента, т.к. утратит свойства копии.
    *
-   * На самом деле, отростков у элемента может быть только три... так как один из четырех,
-   * возможных ходов будет откатывать предыдущий ход, что недопустимо при поиске решений.
-   * Но... лучше провести прямое соответствие между числом возможных ходов и допустимым
-   * количеством отростков элемента дерева.
    *)
   TMapTree = class
     Protected
@@ -273,17 +269,17 @@ begin
 end;
 
 (**
- *
+ * Конструтокр создания дерева
  *
  *
  *)
 Constructor TMapTree.Create(oParent: TMapTree);
 begin
   Inherited Create;//вызов родительского метода конструктора
-  init;
+  init;//инициализация полей
   FParent := oParent;
-  FParent.AddBranch(self);
-  FMap := FParent.FMap.Peer;
+  FParent.AddBranch(self);//добавление элемента в список отростков
+  FMap := FParent.FMap.Peer;//добавление элемента в список копий
 end;
 
 Constructor TMapTree.Create(oMap: TMap);
@@ -293,6 +289,11 @@ begin
   FMap := oMap;
 end;
 
+
+{**
+* Инициализация полей элемента
+*
+*}
 Procedure TMapTree.init;
 begin
   //FBrunches содержит указатели на 4 отростка от дерева
@@ -311,18 +312,28 @@ begin
   inherited;
 end;
 
-
+{**
+* Процедура добавление элемента в список отростоков
+* добавляет элемент в конец списка, iBranchId увеличивается
+* пока не встретится указатель на пустую клетку
+*}
 Procedure TMapTree.AddBranch(oValue: TMapTree);
 var
   iBranchId: integer;
 begin
-  if FBranches[3] = nil then begin
+  if FBranches[3] = nil then
+  begin
     iBranchId := 0;
     while (3 >= iBranchId) and (nil <> FBranches[iBranchId]) do inc(iBranchId);
     FBranches[iBranchId] := oValue;
   end;
 end;
 
+{**
+* Процедура удаления элемента из списка отростков
+* происходит переприсваивание (смещение) на один элемент левее
+* последний элемент указывает на nil
+*}
 Procedure TMapTree.DeleteBranch(oValue: TMapTree);
 var
   iBranchId: integer;
@@ -330,7 +341,8 @@ begin
   iBranchId := 0;
   while (3 >= iBranchId) and (oValue <> FBranches[iBranchId]) do inc(iBranchId);
   if iBranchId > 3 then exit;
-  while 3 > iBranchId do begin
+  while 3 > iBranchId do
+  begin
     FBranches[iBranchId] := FBranches[iBranchId + 1];
     inc(iBranchId);
   end;
@@ -353,7 +365,7 @@ end;
 
 
 {**
- * Функция определения длины решения
+ * Процедура определения длины решения
  * идем снизу вверх, цепляя порождающую вершину
  * при заходе в цикл мы уже как бы имеем один шаг для корня
  *}
@@ -401,7 +413,10 @@ begin
   end;
 end;
 
-
+{**
+* Процедура очистки самих отростков
+*
+*}
 Procedure TMapTree.ClearBranches;
 var
   iBranchId: integer;
@@ -416,6 +431,10 @@ begin
   end;
 end;
 
+{**
+* Функция возвращает отросток по его индексу
+*
+*}
 Function TMapTree.GetBranch(index: integer): TMapTree;
 begin
   Result := nil;
@@ -432,12 +451,16 @@ var
 begin
   Result := 1;
   oRoot := FParent;
-  while oRoot <> nil do begin
+  while oRoot <> nil do
+  begin
     inc(Result);
     oRoot := oRoot.Root;
   end;
 end;
 
+{**
+* Конструктор создания списка, в котром хранятся элементы дерева
+*}
 Constructor TMapList.Create;
 begin
   FList := TList.Create;
@@ -491,7 +514,9 @@ begin
   FList.Delete(0);
 end;
 
-
+{**
+* Процедура очистки списка элементов
+*}
 Procedure TMapList.Clear;
 begin
   while FList.Count > 0 do FList.Delete(0);
@@ -499,16 +524,20 @@ end;
 
 
 (**
- * Функция определяет количество элементов в очереди
+ * Функция определяет количество элементов в списке
  *
  * Возвращаемое значение:
- *   Число элементов в очереди
+ *   Число элементов в списке
  *)
 Function TMapList.GetCount: integer;
 begin
   Result := FList.Count;
 end;
 
+{**
+* Функция возвращает элемент по его индексу
+*
+*}
 Function TMapList.GetItem(iId: integer): TMapTree;
 begin
   Result := nil;
@@ -516,13 +545,17 @@ begin
   Result := TMapTree(FList.Items[iId]);
 end;
 
+{**
+* Конструктор при создании точек маршрута
+*
+*}
 Constructor TWaypoint.Create(X, Y: integer; oList: TWaypointList);
 begin
-  inherited Create;
-  FX := X;
-  FY := Y;
+  inherited Create;//вызов родительского метода конструктора
+  FX := X;//устанавливаем координату по оси X
+  FY := Y;//устанавливаем координату по оси Y
   FList := oList;
-  FList.AddPoint(self);
+  FList.AddPoint(self);//добавление хода в список
 end;
 
 Destructor TWaypoint.Destroy;
@@ -531,6 +564,9 @@ begin
   inherited;
 end;
 
+{**
+* Конструктор при создании списка ходов
+*}
 Constructor TWaypointList.Create; 
 begin
   inherited;
@@ -544,17 +580,26 @@ begin
   inherited;
 end;
 
+{**
+* Функция добавления хода в список ходов по заданным координатам
+*}
 Function TWaypointList.Add(X, Y: integer): TWaypoint;
 begin
   Result := TWaypoint.Create(X, Y, self);
 end;
 
+{**
+* Процедура удаления индекса по его фактическому адресу
+*}
 Procedure TWaypointList.Delete(var oPoint: TWaypoint);
 begin
   oPoint.Free;
   oPoint := nil;
 end;
 
+{**
+* Удаление хода по его индексу
+*}
 Procedure TWaypointList.Delete(iId: integer);
 var
   oPoint: TWaypoint;
@@ -563,26 +608,43 @@ begin
   Delete(oPoint);
 end;
 
+{**
+* Процедура очистки списка ходов
+*}
 Procedure TWaypointList.Clear;   
 begin
   while FList.Count > 0 do TWaypoint(FList.Items[0]).Free;
 end;
 
-Procedure TWaypointList.AddPoint(oPoint: TWaypoint);
+{**
+* Процедура добавления хода в список ходов
+*}
+procedure TWaypointList.AddPoint(oPoint: TWaypoint);
 begin
   FList.Add(oPoint);
 end;
 
+{**
+* Процедура удаления хода из списка ходов
+* объект хода не удаляется
+*}
 Procedure TWaypointList.DeletePoint(oPoint: TWaypoint);
 begin
   FList.Remove(oPoint);
 end;
 
+{**
+* Функция возвращает количество ходов в списке ходов
+*}
 Function TWaypointList.GetCount: integer; 
 begin
   Result := FList.Count;
 end;
 
+{**
+* Функция возвращает ход по его индексу
+* iId - индекс по которому нужно определить поле
+*}
 Function TWaypointList.GetPoint(iId: integer): TWaypoint;
 begin
   Result := nil;
