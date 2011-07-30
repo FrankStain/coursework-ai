@@ -1147,7 +1147,11 @@ begin
       if FCheckList.Item[iCheckListId].IsMapsEqual(oNextStep) then break;
     end;
     // Если встречался, то ничего с ним больше не делаем
-    if (iCheckListId > 0) and (FCheckList.Item[iCheckListId].Weight = 0) then continue;
+    if
+      (iCheckListId > 0) and
+      (FCheckList.Item[iCheckListId].Depth <= oNextStep.Depth) and
+      (FCheckList.Item[iCheckListId].Weight = 0)
+    then continue;
 
     // Добавляем элемент в чек-лист, а вдруг он еще раз встретится?
     FCheckList.Send(oNextStep);
